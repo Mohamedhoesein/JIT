@@ -1,0 +1,9 @@
+.idea/
+cmake-build-debug/
+
+benchmarks/**/output/
+lib/**/
+
+a.out
+*.gch
+time_data.csv
