@@ -1,3 +1,4 @@
+#include "llvm/ADT/StringRef.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IRReader/IRReader.h"
 #include "llvm/IR/LLVMContext.h"
@@ -9,7 +10,7 @@
 #include <iostream>
 #include <filesystem>
 
-#include "JIT.h"
+#include "JIT/BaseJIT.h"
 
 //https://stackoverflow.com/questions/22239801/how-to-load-llvm-bitcode-file-from-an-ifstream
 std::unique_ptr<llvm::Module> load_module(llvm::StringRef file, llvm::LLVMContext &context)
@@ -38,6 +39,10 @@ bool hasEnding(std::string const &fullString, std::string const &ending) {
     }
 }
 
+llvm::Expected<llvm::orc::CaptureModule> AddModule(llvm::StringRef Name) {
+    return llvm::createStringError(std::error_code(), "No JIT selected.");
+}
+
 int main(int argc, char **argv) {
     llvm::InitializeNativeTarget();
     llvm::InitializeNativeTargetAsmPrinter();
@@ -61,14 +66,14 @@ int main(int argc, char **argv) {
         exit(-1);
     }
 
-    llvm::Expected<std::unique_ptr<llvm::orc::JIT>> jit = llvm::orc::JIT::Create();
+    llvm::Expected<std::unique_ptr<llvm::orc::BaseJIT>> jit = llvm::orc::BaseJIT::create(AddModule);
 
     if (!jit) {
         std::cout << "An error occurred when creating the jit." << std::endl << toString(jit.takeError()) << std::endl;
         exit(-1);
     }
 
-    std::unique_ptr<llvm::orc::JIT> true_jit = std::move(*jit);
+    std::unique_ptr<llvm::orc::BaseJIT> true_jit = std::move(*jit);
     for (int i = 1; i <= base; i++) {
         std::unique_ptr<llvm::LLVMContext> context = std::make_unique<llvm::LLVMContext>();
         std::unique_ptr<llvm::Module> module = load_module(argv[i], *context);

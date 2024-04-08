@@ -10,8 +10,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef LLVM_EXECUTIONENGINE_ORC_KALEIDOSCOPEJIT_H
-#define LLVM_EXECUTIONENGINE_ORC_KALEIDOSCOPEJIT_H
+#ifndef JIT_JIT_H
+#define JIT_JIT_H
 
 #include "llvm/ADT/StringRef.h"
 #include "llvm/ExecutionEngine/Orc/CompileOnDemandLayer.h"
@@ -38,53 +38,52 @@
 #include <exception>
 #include <vector>
 
-#include "reOptimize/ReOptimizeLayer.h"
-#include "reOptimize/JITLinkRedirectableSymbolManager.h"
+#include "../reOptimize/ReOptimizeLayer.h"
+#include "../reOptimize/JITLinkRedirectableSymbolManager.h"
+#include "BaseJIT.h"
 
 namespace llvm {
     namespace orc {
-
-        class JIT {
+        class JIT: public BaseJIT {
         private:
-            std::unique_ptr<ExecutionSession> ES;
-            std::unique_ptr<EPCIndirectionUtils> EPCIU;
-            std::unique_ptr<ObjectLinkingLayer> ObjectLayer;
-            std::unique_ptr<IRCompileLayer> CompileLayer;
+            std::unique_ptr<llvm::orc::ExecutionSession> ExecutionSession;
+            std::unique_ptr<llvm::orc::EPCIndirectionUtils> EPCIU;
+            std::unique_ptr<llvm::orc::ObjectLinkingLayer> ObjectLayer;
+            std::unique_ptr<llvm::orc::IRCompileLayer> CompileLayer;
             // We rely on the internal state of COD layer, do the COD layer first, and then the Optimize layer,
             // they can't see if the other has created a library for some implementation, since it is not possible to
             // have two libraries with teh same name, i.e. for the same method, this can't be used. To alleviate this
             // we need to reimplement to have some shared logic between multiple instances.
-            std::unique_ptr<CompileOnDemandLayer> CODLayer;
-            std::unique_ptr<IRTransformLayer> OptimizeLayer;
-            std::unique_ptr<ReOptimizeLayer> ReOpLayer;
+            std::unique_ptr<llvm::orc::CompileOnDemandLayer> CompileOnDemandLayer;
+            std::unique_ptr<llvm::orc::IRTransformLayer> OptimizeLayer;
+            std::unique_ptr<llvm::orc::ReOptimizeLayer> ReOptimizeLayer;
 
-            StringMap<int> internals;
-            JITDylib *MainJD;
-            DataLayout DL;
-            MangleAndInterner Mangle;
-            std::set<std::string> globalVars;
+            StringMap<int> Internals;
+            llvm::orc::JITDylib *MainJD;
+            llvm::DataLayout DataLayout;
+            llvm::orc::MangleAndInterner Mangle;
+            std::set<std::string> GlobalVars;
 
             static void handleLazyCallThroughError();
-            static Expected<ThreadSafeModule> optimizeModule(ThreadSafeModule TSM, const MaterializationResponsibility &R);
+            static Expected<ThreadSafeModule> optimizeModule(ThreadSafeModule ThreadSafeModule, const MaterializationResponsibility &R);
+            Error applyDataLayout(Module &Module);
         public:
-            static Expected<std::unique_ptr<JIT>> Create();
+            static Expected<std::unique_ptr<llvm::orc::BaseJIT>> create(llvm::orc::AddModuleCallback AddModule);
 
-            JIT(std::unique_ptr<ExecutionSession> ES,
-                std::unique_ptr<EPCIndirectionUtils> EPCIU,
-                JITTargetMachineBuilder JTMB,
-                DataLayout DL,
-                std::unique_ptr<RedirectableSymbolManager> JLRSM,
-                std::unique_ptr<ObjectLinkingLayer> OL);
+            JIT(std::unique_ptr<llvm::orc::ExecutionSession> parent,
+                std::unique_ptr<llvm::orc::EPCIndirectionUtils> EPCIU,
+                llvm::orc::JITTargetMachineBuilder currentVersion,
+                llvm::DataLayout oldResourceTracker,
+                std::unique_ptr<llvm::orc::RedirectableSymbolManager> JLRSM,
+                std::unique_ptr<llvm::orc::ObjectLinkingLayer> OL,
+                llvm::orc::AddModuleCallback AM);
             ~JIT();
-            Error applyDataLayout(Module &M);
-            Error addModule(ThreadSafeModule TSM, ResourceTrackerSP RT = nullptr);
-            Expected<ExecutorSymbolDef> lookup(StringRef Name);
-            const DataLayout &getDataLayout() const { return DL; }
-            JITDylib *getMainJITDylib() { return MainJD; }
-            void dump() {this->ES->dump(dbgs());}
+            Error addModule(llvm::orc::ThreadSafeModule ThreadSafeModule) override;
+            Error addModule(llvm::orc::ThreadSafeModule ThreadSafeModule, llvm::orc::ResourceTrackerSP ResourceTracker) override;
+            Expected<ExecutorSymbolDef> lookup(llvm::StringRef Name) override;
         };
 
     } // end namespace orc
 } // end namespace llvm
 
-#endif // LLVM_EXECUTIONENGINE_ORC_KALEIDOSCOPEJIT_H
+#endif //JIT_JIT_H

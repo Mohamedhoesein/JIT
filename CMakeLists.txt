@@ -6,7 +6,9 @@ set(CMAKE_DEBUG_POSTFIX d)
 set(CMAKE_PREFIX_PATH "./lib/llvm")
 set(NO_RTTI "-fno-rtti")
 set(LLVM_ENABLE_ASSERTIONS ON)
-add_definitions(${NO_RTTI})
+add_compile_options(${NO_RTTI})
+set(JIT "SIMPLE_JIT")
+add_compile_definitions(${JIT})
 
 # Look for LLVM, and set the definitions
 find_package(LLVM REQUIRED CONFIG)
@@ -18,16 +20,21 @@ message(STATUS "LLVM_DEFINITIONS_LIST: ${LLVM_DEFINITIONS_LIST}")
 
 include_directories(${LLVM_INCLUDE_DIRS})
 separate_arguments(LLVM_DEFINITIONS_LIST NATIVE_COMMAND ${LLVM_DEFINITIONS})
-add_definitions(${LLVM_DEFINITIONS_LIST})
+add_compile_definitions(${LLVM_DEFINITIONS_LIST})
+
 
 # Build the jit
-add_executable(jit FrontEnd.cpp JIT.h JIT.cpp
+add_executable(jit FrontEnd.cpp
         reOptimize/ReOptimizeLayer.cpp
         reOptimize/ReOptimizeLayer.h
         reOptimize/RedirectionManager.cpp
         reOptimize/RedirectionManager.h
         reOptimize/JITLinkRedirectableSymbolManager.cpp
-        reOptimize/JITLinkRedirectableSymbolManager.h)
+        reOptimize/JITLinkRedirectableSymbolManager.h
+        JIT/JIT.h
+        JIT/JIT.cpp
+        JIT/BaseJIT.h
+        JIT/BaseJit.cpp)
 
 # Find the libraries that correspond to the LLVM components
 llvm_map_components_to_libnames(LLVM_LIBRARIES Core orcjit native Support)
