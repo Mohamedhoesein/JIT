@@ -68,7 +68,7 @@ namespace llvm {
             static Expected<ThreadSafeModule> optimizeModule(ThreadSafeModule ThreadSafeModule, const MaterializationResponsibility &R);
             Error applyDataLayout(Module &Module);
         public:
-            static Expected<std::unique_ptr<llvm::orc::BaseJIT>> create(llvm::orc::AddModuleCallback AddModule);
+            static Expected<std::unique_ptr<llvm::orc::BaseJIT>> create(llvm::orc::AddModuleCallback AddModule, std::vector<std::string> Arguments);
 
             JIT(std::unique_ptr<llvm::orc::ExecutionSession> parent,
                 std::unique_ptr<llvm::orc::EPCIndirectionUtils> EPCIU,

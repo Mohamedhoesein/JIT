@@ -21,7 +21,7 @@ namespace llvm {
             Error requestModule(StringRef Name);
         public:
             virtual ~BaseJIT();
-            static Expected<std::unique_ptr<BaseJIT>> create(AddModuleCallback AddModule);
+            static Expected<std::unique_ptr<BaseJIT>> create(AddModuleCallback AddModule, std::vector<std::string> Arguments);
             virtual Error addModule(ThreadSafeModule ThreadSafeModule) = 0;
             virtual Error addModule(ThreadSafeModule ThreadSafeModule, ResourceTrackerSP ResourceTracker) = 0;
             virtual Expected<ExecutorSymbolDef> lookup(StringRef Name) = 0;

@@ -101,7 +101,8 @@ llvm::orc::JIT::~JIT() {
 }
 
 
-Expected<std::unique_ptr<llvm::orc::BaseJIT>> llvm::orc::JIT::create(llvm::orc::AddModuleCallback AddModule) {
+Expected<std::unique_ptr<llvm::orc::BaseJIT>> llvm::orc::JIT::create(llvm::orc::AddModuleCallback AddModule, std::vector<std::string> Arguments) {
+    (void)Arguments;
     auto epc = SelfExecutorProcessControl::Create();
     if (!epc)
         return epc.takeError();
