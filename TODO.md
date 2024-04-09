@@ -1,10 +1,10 @@
 Benchmarks:
 - [ ] Shell scripts:
-    - [ ] Make shared variables:
-        - [ ] Name of compile scripts.
-        - [ ] Name of run scripts.
-        - [ ] Name of CSV files.
-    - [ ] Create a base function for the compiling and running, which takes as an argument the source and jit.
+    - [x] Make shared variables:
+        - [x] Name of compile scripts.
+        - [x] Name of run scripts.
+        - [x] Name of CSV files.
+    - [x] Create a base function for the compiling and running, which takes as an argument the source and jit.
     - [ ] Create a logic to compile and run a binary with some optimisations as a reference.
 - [ ] Handle the arguments for the back-end.
 - [ ] See if we need to rerun the same application multiple times or just once.
@@ -23,6 +23,7 @@ JIT:
         - [x] `-file` will be the files of the application.
         - [x] `-application` will be the arguments for the application, split on space unless something is in quotes.
           So `arg1 "arg2 arg3" arg4`, will be split into `arg1`, `arg2 arg3`, and `arg4`.
-- [ ] Expand the simple JIT implementation to have multiple optimisations and allow for arguments to select the optimisations.
+- [x] Expand the simple JIT implementation to have multiple optimisations and allow for arguments to select the optimisations.
+- [ ] Generalize the front-end so that an easy exchange of different front-ends is possible.
 - [ ] For the arguments store the core combinations for each back-end in a file with a name associated with the back-end,
   you can have multiple for the same back-end. Which is used for the benchmarks.
