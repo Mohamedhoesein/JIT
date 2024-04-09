@@ -8,6 +8,7 @@ Benchmarks:
     - [ ] Create a logic to compile and run a binary with some optimisations as a reference.
 - [ ] Handle the arguments for the back-end.
 - [ ] See if we need to rerun the same application multiple times or just once.
+- [ ] Look at handling performance characteristics from the code, like is done for certain checks in java as given in [Design, Implementation, and Evaluation of Optimizations in a Just-In-Time Compiler](https://dl.acm.org/doi/pdf/10.1145/304065.304111).
 
 JIT:
 - [x] Create an abstract class for the back-end.
