@@ -52,7 +52,7 @@ int main(int argc, char **argv) {
 
     int backEndArgc;
     char **backEndArgv;
-    r = string_to_argv(arguments.ApplicationArguments.c_str(), &backEndArgc, &backEndArgv);
+    r = string_to_argv(arguments.BackEndArguments.c_str(), &backEndArgc, &backEndArgv);
     PRINT_ERROR(
             r != 0,
             "Invalid arguments for the backend."
@@ -60,7 +60,7 @@ int main(int argc, char **argv) {
     std::vector<std::string> backEndArguments;
     backEndArguments.reserve(backEndArgc);
     for (int i = 0; i < backEndArgc; i++)
-        backEndArguments.emplace_back(argv[i]);
+        backEndArguments.emplace_back(backEndArgv[i]);
     llvm::Expected<std::unique_ptr<llvm::orc::BaseJIT>> jit = llvm::orc::BaseJIT::create(AddModule, backEndArguments);
 
     PRINT_ERROR(

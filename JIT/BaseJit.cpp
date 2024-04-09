@@ -15,11 +15,8 @@ llvm::Error llvm::orc::BaseJIT::requestModule(StringRef Name) {
 
 llvm::Expected<std::unique_ptr<llvm::orc::BaseJIT>> llvm::orc::BaseJIT::create(llvm::orc::AddModuleCallback AddModule, std::vector<std::string> Arguments) {
 #ifdef SIMPLE_JIT
-    return JIT::create(std::move(AddModule), std::move(Arguments));
+    return llvm::orc::JIT::create(std::move(AddModule), std::move(Arguments));
 #else
     return createStringError(std::error_code(), "No JIT selected.");
 #endif
-}
-
-llvm::orc::BaseJIT::~BaseJIT() {
 }

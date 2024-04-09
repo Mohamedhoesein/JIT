@@ -13,27 +13,6 @@
 #ifndef JIT_JIT_H
 #define JIT_JIT_H
 
-#include "llvm/ADT/StringRef.h"
-#include "llvm/ExecutionEngine/Orc/CompileOnDemandLayer.h"
-#include "llvm/ExecutionEngine/Orc/CompileUtils.h"
-#include "llvm/ExecutionEngine/Orc/Core.h"
-#include "llvm/ExecutionEngine/Orc/EPCIndirectionUtils.h"
-#include "llvm/ExecutionEngine/Orc/ExecutionUtils.h"
-#include "llvm/ExecutionEngine/Orc/ExecutorProcessControl.h"
-#include "llvm/ExecutionEngine/Orc/IRCompileLayer.h"
-#include "llvm/ExecutionEngine/Orc/IRTransformLayer.h"
-#include "llvm/ExecutionEngine/Orc/JITTargetMachineBuilder.h"
-#include "llvm/ExecutionEngine/Orc/RTDyldObjectLinkingLayer.h"
-#include "llvm/ExecutionEngine/Orc/Shared/ExecutorSymbolDef.h"
-#include "llvm/ExecutionEngine/SectionMemoryManager.h"
-#include "llvm/IR/DataLayout.h"
-#include "llvm/IR/LLVMContext.h"
-#include "llvm/IR/LegacyPassManager.h"
-#include "llvm/IR/Module.h"
-#include "llvm/Transforms/InstCombine/InstCombine.h"
-#include "llvm/Transforms/Scalar.h"
-#include "llvm/Transforms/Scalar/GVN.h"
-#include "llvm/ExecutionEngine/Orc/LLJIT.h"
 #include <memory>
 #include <exception>
 #include <vector>
@@ -41,10 +20,16 @@
 #include "../reOptimize/ReOptimizeLayer.h"
 #include "../reOptimize/JITLinkRedirectableSymbolManager.h"
 #include "BaseJIT.h"
+#include "llvm/ExecutionEngine/Orc/EPCIndirectionUtils.h"
+#include "llvm/ExecutionEngine/Orc/IRCompileLayer.h"
+#include "llvm/ExecutionEngine/Orc/CompileOnDemandLayer.h"
+#include "llvm/ExecutionEngine/Orc/IRTransformLayer.h"
+#include "llvm/ExecutionEngine/Orc/JITTargetMachineBuilder.h"
 
 namespace llvm {
     namespace orc {
         class JIT: public BaseJIT {
+        protected:
         private:
             std::unique_ptr<llvm::orc::ExecutionSession> ExecutionSession;
             std::unique_ptr<llvm::orc::EPCIndirectionUtils> EPCIU;
@@ -63,6 +48,10 @@ namespace llvm {
             llvm::DataLayout DataLayout;
             llvm::orc::MangleAndInterner Mangle;
             std::set<std::string> GlobalVars;
+            static bool UseOptimize;
+            static bool UseReOptimize;
+            static std::string Optimize;
+            static std::string ReOptimize;
 
             static void handleLazyCallThroughError();
             static Expected<ThreadSafeModule> optimizeModule(ThreadSafeModule ThreadSafeModule, const MaterializationResponsibility &R);
@@ -72,12 +61,12 @@ namespace llvm {
 
             JIT(std::unique_ptr<llvm::orc::ExecutionSession> parent,
                 std::unique_ptr<llvm::orc::EPCIndirectionUtils> EPCIU,
-                llvm::orc::JITTargetMachineBuilder currentVersion,
-                llvm::DataLayout oldResourceTracker,
-                std::unique_ptr<llvm::orc::RedirectableSymbolManager> JLRSM,
+                llvm::orc::JITTargetMachineBuilder CurrentVersion,
+                llvm::DataLayout OldResourceTracker,
+                std::unique_ptr<llvm::orc::RedirectableSymbolManager> TSM,
                 std::unique_ptr<llvm::orc::ObjectLinkingLayer> OL,
                 llvm::orc::AddModuleCallback AM);
-            ~JIT();
+            ~JIT() override;
             Error addModule(llvm::orc::ThreadSafeModule ThreadSafeModule) override;
             Error addModule(llvm::orc::ThreadSafeModule ThreadSafeModule, llvm::orc::ResourceTrackerSP ResourceTracker) override;
             Expected<ExecutorSymbolDef> lookup(llvm::StringRef Name) override;

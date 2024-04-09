@@ -6,11 +6,11 @@
 
 #include "Util.h"
 
-std::vector<std::string> split(const std::string& string) {
+std::vector<std::string> split(const std::string& string, const char delimiter) {
     std::stringstream stream(string);
     std::string segment;
     std::vector<std::string> parts;
-    while (std::getline(stream, segment, ' '))
+    while (std::getline(stream, segment, delimiter))
         parts.push_back(segment);
     return parts;
 }
@@ -18,26 +18,18 @@ std::vector<std::string> split(const std::string& string) {
 struct Arguments getArguments(int argc, char **argv) {
     struct Arguments arguments = (struct Arguments){
             .Files = {},
-            .BackEndArguments = {},
+            .BackEndArguments = "",
             .ApplicationArguments = ""
-    };
-    struct option long_options[] = {
-            {"files", required_argument, nullptr, 'f'},
-            {"back-end", required_argument, nullptr, 'b'},
-            {"application", required_argument, nullptr, 'a'},
-            {nullptr, 0, nullptr, 0}
     };
     int character;
     while (true) {
-        int option_index = 0;
-        character = getopt_long(argc, argv, "f:b:a:",
-                                long_options, &option_index);
+        character = getopt(argc, argv, "f:b:a:");
         if (character == -1)
             break;
 
         switch (character) {
             case 'f':
-                arguments.Files = split(optarg);
+                arguments.Files = split(optarg, ' ');
                 break;
             case 'b':
                 arguments.BackEndArguments = optarg;
@@ -70,7 +62,7 @@ std::unique_ptr<llvm::Module> load_module(llvm::StringRef file, llvm::LLVMContex
 //https://stackoverflow.com/questions/874134/find-out-if-string-ends-with-another-string-in-c
 bool hasEnding(std::string const &fullString, std::string const &ending) {
     if (fullString.length() >= ending.length()) {
-        return (0 == fullString.compare (fullString.length() - ending.length(), ending.length(), ending));
+        return (0 == fullString.compare(fullString.length() - ending.length(), ending.length(), ending));
     } else {
         return false;
     }

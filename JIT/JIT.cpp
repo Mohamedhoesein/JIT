@@ -1,32 +1,51 @@
+#include "llvm/ADT/StringRef.h"
+#include "llvm/ExecutionEngine/Orc/CompileUtils.h"
+#include "llvm/ExecutionEngine/Orc/Core.h"
+#include "llvm/ExecutionEngine/Orc/ExecutionUtils.h"
+#include "llvm/ExecutionEngine/Orc/ExecutorProcessControl.h"
+#include "llvm/ExecutionEngine/Orc/LLJIT.h"
+#include "llvm/ExecutionEngine/Orc/Shared/ExecutorSymbolDef.h"
+#include "llvm/IR/DataLayout.h"
+#include "llvm/IR/LegacyPassManager.h"
+#include "llvm/IR/Module.h"
+#include "llvm/IR/PassManager.h"
+#include "llvm/Passes/PassBuilder.h"
+#include "llvm/Transforms/Scalar.h"
 #include <utility>
 
 #include "JIT.h"
+#include "../util/Util.h"
 
-using namespace llvm;
-using namespace orc;
+bool llvm::orc::JIT::UseOptimize;
+bool llvm::orc::JIT::UseReOptimize;
+std::string llvm::orc::JIT::Optimize;
+std::string llvm::orc::JIT::ReOptimize;
 
 void llvm::orc::JIT::handleLazyCallThroughError() {
     errs() << "LazyCallThrough error: Could not find function body";
     exit(1);
 }
 
-Expected<ThreadSafeModule> llvm::orc::JIT::optimizeModule(ThreadSafeModule TSM, const MaterializationResponsibility &R) {
-    TSM.withModuleDo([](Module &M) {
-        // Create a function pass manager.
-        auto FPM = std::make_unique<legacy::FunctionPassManager>(&M);
+llvm::Expected<llvm::orc::ThreadSafeModule> llvm::orc::JIT::optimizeModule(ThreadSafeModule TSM, const MaterializationResponsibility &R) {
+    if (llvm::orc::JIT::UseOptimize)
+        TSM.withModuleDo([](Module &M) {
+            llvm::LoopAnalysisManager lam;
+            llvm::FunctionAnalysisManager fam;
+            llvm::CGSCCAnalysisManager cgam;
+            llvm::ModuleAnalysisManager mam;
 
-        // Add some optimizations.
-        FPM->add(createInstructionCombiningPass());
-        FPM->add(createReassociatePass());
-        FPM->add(createGVNPass());
-        FPM->add(createCFGSimplificationPass());
-        FPM->doInitialization();
+            llvm::PassBuilder pb;
+            pb.registerModuleAnalyses(mam);
+            pb.registerCGSCCAnalyses(cgam);
+            pb.registerFunctionAnalyses(fam);
+            pb.registerLoopAnalyses(lam);
+            pb.crossRegisterProxies(lam, fam, cgam, mam);
 
-        // Run the optimizations over all functions in the module being added to
-        // the JIT.
-        for (auto &F: M)
-            FPM->run(F);
-    });
+            llvm::ModulePassManager mpm;
+            if (auto Err = pb.parsePassPipeline(mpm, llvm::StringRef(llvm::orc::JIT::Optimize)))
+                return;
+            mpm.run(M, mam);
+        });
 
     return std::move(TSM);
 }
@@ -39,7 +58,7 @@ llvm::orc::JIT::JIT(std::unique_ptr<llvm::orc::ExecutionSession> ES,
          std::unique_ptr<llvm::orc::ObjectLinkingLayer> OLayer,
          llvm::orc::AddModuleCallback AM)
         : BaseJIT(std::move(AM)), ExecutionSession(std::move(ES)),
-          EPCIU(std::move(EPCIU)), DataLayout(std::move(DL)),
+          EPCIU(std::move(EPCIU)), DataLayout(DL),
           Mangle(*this->ExecutionSession, this->DataLayout),
           MainJD(this->ExecutionSession->getJITDylibByName("main")),
           ObjectLayer(std::move(OLayer)),
@@ -87,8 +106,27 @@ llvm::orc::JIT::JIT(std::unique_ptr<llvm::orc::ExecutionSession> ES,
     cantFail(this->ReOptimizeLayer->reigsterRuntimeFunctions(*this->MainJD));
     this->ReOptimizeLayer->setReoptimizeFunc(
             [&](llvm::orc::ReOptimizeLayer &parent, llvm::orc::ReOptMaterializationUnitID MUID,
-                unsigned currentVersion, llvm::orc::ResourceTrackerSP oldResourceTracker,
-                llvm::orc::ThreadSafeModule &threadSafeModule) {
+                unsigned CurrentVersion, llvm::orc::ResourceTrackerSP OldResourceTracker,
+                llvm::orc::ThreadSafeModule &TSM) {
+                    if (llvm::orc::JIT::UseReOptimize)
+                        TSM.withModuleDo([](Module &M) {
+                            llvm::LoopAnalysisManager lam;
+                            llvm::FunctionAnalysisManager fam;
+                            llvm::CGSCCAnalysisManager cgam;
+                            llvm::ModuleAnalysisManager mam;
+
+                            llvm::PassBuilder pb;
+                            pb.registerModuleAnalyses(mam);
+                            pb.registerCGSCCAnalyses(cgam);
+                            pb.registerFunctionAnalyses(fam);
+                            pb.registerLoopAnalyses(lam);
+                            pb.crossRegisterProxies(lam, fam, cgam, mam);
+
+                            llvm::ModulePassManager mpm;
+                            if (auto Err = pb.parsePassPipeline(mpm, llvm::StringRef(llvm::orc::JIT::Optimize)))
+                                return;
+                            mpm.run(M, mam);
+                        });
                     return Error::success();
                 });
 }
@@ -101,8 +139,22 @@ llvm::orc::JIT::~JIT() {
 }
 
 
-Expected<std::unique_ptr<llvm::orc::BaseJIT>> llvm::orc::JIT::create(llvm::orc::AddModuleCallback AddModule, std::vector<std::string> Arguments) {
-    (void)Arguments;
+llvm::Expected<std::unique_ptr<llvm::orc::BaseJIT>> llvm::orc::JIT::create(llvm::orc::AddModuleCallback AddModule, std::vector<std::string> Arguments) {
+    std::string optimize;
+    std::string reOptimize;
+    llvm::orc::JIT::UseOptimize = false;
+    llvm::orc::JIT::UseReOptimize = false;
+    for (const auto& argument : Arguments) {
+        auto splitArgument = split(argument, '=');
+        if (splitArgument[0] == "-opt") {
+            llvm::orc::JIT::UseOptimize = true;
+            llvm::orc::JIT::Optimize = splitArgument[1];
+        }
+        else if (splitArgument[0] == "-reopt") {
+            llvm::orc::JIT::UseReOptimize = true;
+            llvm::orc::JIT::ReOptimize = splitArgument[1];
+        }
+    }
     auto epc = SelfExecutorProcessControl::Create();
     if (!epc)
         return epc.takeError();
@@ -141,7 +193,7 @@ Expected<std::unique_ptr<llvm::orc::BaseJIT>> llvm::orc::JIT::create(llvm::orc::
     return baseJIT;
 }
 
-Error llvm::orc::JIT::applyDataLayout(llvm::Module &Module) {
+llvm::Error llvm::orc::JIT::applyDataLayout(llvm::Module &Module) {
     Module.setDataLayout(this->DataLayout);
 
     if (Module.getDataLayout() != this->DataLayout)
@@ -154,11 +206,11 @@ Error llvm::orc::JIT::applyDataLayout(llvm::Module &Module) {
     return Error::success();
 }
 
-Error llvm::orc::JIT::addModule(llvm::orc::ThreadSafeModule ThreadSafeModule) {
+llvm::Error llvm::orc::JIT::addModule(llvm::orc::ThreadSafeModule ThreadSafeModule) {
     return this->addModule(std::move(ThreadSafeModule), this->MainJD->getDefaultResourceTracker());
 }
 
-Error llvm::orc::JIT::addModule(llvm::orc::ThreadSafeModule ThreadSafeModule, llvm::orc::ResourceTrackerSP ResourceTracker) {
+llvm::Error llvm::orc::JIT::addModule(llvm::orc::ThreadSafeModule ThreadSafeModule, llvm::orc::ResourceTrackerSP ResourceTracker) {
     if (ResourceTracker == nullptr)
         ResourceTracker = this->MainJD->getDefaultResourceTracker();
     if (auto Err =
@@ -186,6 +238,6 @@ Error llvm::orc::JIT::addModule(llvm::orc::ThreadSafeModule ThreadSafeModule, ll
     return this->OptimizeLayer->add(std::move(ResourceTracker), std::move(ThreadSafeModule));
 }
 
-Expected<ExecutorSymbolDef> llvm::orc::JIT::lookup(llvm::StringRef Name) {
+llvm::Expected<llvm::orc::ExecutorSymbolDef> llvm::orc::JIT::lookup(llvm::StringRef Name) {
     return this->ExecutionSession->lookup({this->MainJD}, this->Mangle(Name.str()));
 }

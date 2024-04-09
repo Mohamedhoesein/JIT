@@ -25,6 +25,8 @@ struct Arguments {
     std::string ApplicationArguments;
 };
 
+std::vector<std::string> split(const std::string& string, char delimiter);
+
 struct Arguments getArguments(int argc, char **argv);
 
 //https://stackoverflow.com/questions/22239801/how-to-load-llvm-bitcode-file-from-an-ifstream
