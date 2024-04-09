@@ -3,7 +3,7 @@
 #include "BaseJIT.h"
 #include "JIT.h"
 
-llvm::orc::BaseJIT::BaseJIT(AddModuleCallback AM)
+llvm::orc::BaseJIT::BaseJIT(RequestModuleCallback AM)
     : AddModule(std::move(AM)) {}
 
 llvm::Error llvm::orc::BaseJIT::requestModule(StringRef Name) {
@@ -13,8 +13,8 @@ llvm::Error llvm::orc::BaseJIT::requestModule(StringRef Name) {
     return this->addModule(std::move(module->threadSafeModule), module->resourceTracker);
 }
 
-llvm::Expected<std::unique_ptr<llvm::orc::BaseJIT>> llvm::orc::BaseJIT::create(llvm::orc::AddModuleCallback AddModule, std::vector<std::string> Arguments) {
-#ifdef SIMPLE_JIT
+llvm::Expected<std::unique_ptr<llvm::orc::BaseJIT>> llvm::orc::BaseJIT::create(llvm::orc::RequestModuleCallback AddModule, std::vector<std::string> Arguments) {
+#ifdef SIMPLE_JIT_BACK_END
     return llvm::orc::JIT::create(std::move(AddModule), std::move(Arguments));
 #else
     return createStringError(std::error_code(), "No JIT selected.");

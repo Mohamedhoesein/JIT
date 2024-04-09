@@ -1,6 +1,7 @@
 #ifndef JIT_UTIL_H
 #define JIT_UTIL_H
 
+#include <iostream>
 #include <vector>
 #include <string>
 #include "llvm/IR/Module.h"

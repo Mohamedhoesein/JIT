@@ -7,7 +7,9 @@ set(CMAKE_PREFIX_PATH "./lib/llvm")
 set(NO_RTTI "-fno-rtti")
 set(LLVM_ENABLE_ASSERTIONS ON)
 add_compile_options(${NO_RTTI})
-set(JIT "SIMPLE_JIT")
+SET(FRONTEND "LLVM_FORNTEND")
+add_compile_definitions(${FRONTEND})
+set(JIT "SIMPLE_JIT_BACK_END")
 add_compile_definitions(${JIT})
 
 # Look for LLVM, and set the definitions
@@ -37,7 +39,11 @@ add_executable(jit FrontEnd.cpp
         util/StringToArgv.cpp
         util/StringToArgv.h
         util/Util.cpp
-        util/Util.h)
+        util/Util.h
+        front-end/BaseFrontend.h
+        front-end/BaseFrontend.cpp
+        front-end/LLVMFrontend.cpp
+        front-end/LLVMFrontend.h)
 
 # Find the libraries that correspond to the LLVM components
 llvm_map_components_to_libnames(LLVM_LIBRARIES Core orcjit native Support)

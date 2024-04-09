@@ -57,16 +57,15 @@ namespace llvm {
             static Expected<ThreadSafeModule> optimizeModule(ThreadSafeModule ThreadSafeModule, const MaterializationResponsibility &R);
             Error applyDataLayout(Module &Module);
         public:
-            static Expected<std::unique_ptr<llvm::orc::BaseJIT>> create(llvm::orc::AddModuleCallback AddModule, std::vector<std::string> Arguments);
-
             JIT(std::unique_ptr<llvm::orc::ExecutionSession> parent,
                 std::unique_ptr<llvm::orc::EPCIndirectionUtils> EPCIU,
                 llvm::orc::JITTargetMachineBuilder CurrentVersion,
                 llvm::DataLayout OldResourceTracker,
                 std::unique_ptr<llvm::orc::RedirectableSymbolManager> TSM,
                 std::unique_ptr<llvm::orc::ObjectLinkingLayer> OL,
-                llvm::orc::AddModuleCallback AM);
+                llvm::orc::RequestModuleCallback AM);
             ~JIT() override;
+            static Expected<std::unique_ptr<llvm::orc::BaseJIT>> create(llvm::orc::RequestModuleCallback AddModule, std::vector<std::string> Arguments);
             Error addModule(llvm::orc::ThreadSafeModule ThreadSafeModule) override;
             Error addModule(llvm::orc::ThreadSafeModule ThreadSafeModule, llvm::orc::ResourceTrackerSP ResourceTracker) override;
             Expected<ExecutorSymbolDef> lookup(llvm::StringRef Name) override;

@@ -56,7 +56,7 @@ llvm::orc::JIT::JIT(std::unique_ptr<llvm::orc::ExecutionSession> ES,
          llvm::DataLayout DL,
          std::unique_ptr<llvm::orc::RedirectableSymbolManager> RSM,
          std::unique_ptr<llvm::orc::ObjectLinkingLayer> OLayer,
-         llvm::orc::AddModuleCallback AM)
+         llvm::orc::RequestModuleCallback AM)
         : BaseJIT(std::move(AM)), ExecutionSession(std::move(ES)),
           EPCIU(std::move(EPCIU)), DataLayout(DL),
           Mangle(*this->ExecutionSession, this->DataLayout),
@@ -123,7 +123,7 @@ llvm::orc::JIT::JIT(std::unique_ptr<llvm::orc::ExecutionSession> ES,
                             pb.crossRegisterProxies(lam, fam, cgam, mam);
 
                             llvm::ModulePassManager mpm;
-                            if (auto Err = pb.parsePassPipeline(mpm, llvm::StringRef(llvm::orc::JIT::Optimize)))
+                            if (auto Err = pb.parsePassPipeline(mpm, llvm::StringRef(llvm::orc::JIT::ReOptimize)))
                                 return;
                             mpm.run(M, mam);
                         });
@@ -139,7 +139,7 @@ llvm::orc::JIT::~JIT() {
 }
 
 
-llvm::Expected<std::unique_ptr<llvm::orc::BaseJIT>> llvm::orc::JIT::create(llvm::orc::AddModuleCallback AddModule, std::vector<std::string> Arguments) {
+llvm::Expected<std::unique_ptr<llvm::orc::BaseJIT>> llvm::orc::JIT::create(llvm::orc::RequestModuleCallback AddModule, std::vector<std::string> Arguments) {
     std::string optimize;
     std::string reOptimize;
     llvm::orc::JIT::UseOptimize = false;
@@ -187,10 +187,9 @@ llvm::Expected<std::unique_ptr<llvm::orc::BaseJIT>> llvm::orc::JIT::create(llvm:
     if (!jlrsm)
         return jlrsm.takeError();
 
-    std::unique_ptr<BaseJIT> baseJIT = std::make_unique<JIT>(std::move(es), std::move(*epciu),
+    return std::make_unique<JIT>(std::move(es), std::move(*epciu),
                                  std::move(jtmb), std::move(*DL), std::move(*jlrsm),
                                  std::move(ol), std::move(AddModule));
-    return baseJIT;
 }
 
 llvm::Error llvm::orc::JIT::applyDataLayout(llvm::Module &Module) {

@@ -6,25 +6,26 @@
 #include "llvm/ExecutionEngine/Orc/Core.h"
 #include <memory>
 
+typedef struct {
+    llvm::orc::ThreadSafeModule threadSafeModule;
+    llvm::orc::ResourceTrackerSP resourceTracker;
+} CaptureModule;
+
 namespace llvm {
     namespace orc {
-        typedef struct {
-            ThreadSafeModule threadSafeModule;
-            ResourceTrackerSP resourceTracker;
-        } CaptureModule;
-        using AddModuleCallback = unique_function<Expected<CaptureModule>(StringRef)>;
+        using RequestModuleCallback = unique_function<llvm::Expected<CaptureModule>(llvm::StringRef)>;
 
         class BaseJIT {
         protected:
-            AddModuleCallback AddModule;
-            explicit BaseJIT(AddModuleCallback AM);
-            Error requestModule(StringRef Name);
+            RequestModuleCallback AddModule;
+            explicit BaseJIT(RequestModuleCallback AM);
+            llvm::Error requestModule(llvm::StringRef Name);
         public:
-            static Expected<std::unique_ptr<BaseJIT>> create(AddModuleCallback AddModule, std::vector<std::string> Arguments);
             virtual ~BaseJIT() = default;
-            virtual Error addModule(ThreadSafeModule ThreadSafeModule) = 0;
-            virtual Error addModule(ThreadSafeModule ThreadSafeModule, ResourceTrackerSP ResourceTracker) = 0;
-            virtual Expected<ExecutorSymbolDef> lookup(StringRef Name) = 0;
+            static llvm::Expected<std::unique_ptr<llvm::orc::BaseJIT>> create(RequestModuleCallback AddModule, std::vector<std::string> Arguments);
+            virtual llvm::Error addModule(llvm::orc::ThreadSafeModule ThreadSafeModule) = 0;
+            virtual llvm::Error addModule(llvm::orc::ThreadSafeModule ThreadSafeModule, llvm::orc::ResourceTrackerSP ResourceTracker) = 0;
+            virtual llvm::Expected<llvm::orc::ExecutorSymbolDef> lookup(llvm::StringRef Name) = 0;
         };
     }
 }
