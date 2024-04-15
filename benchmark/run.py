@@ -18,9 +18,6 @@ def main(args: typing.Any):
             continue
         os.chdir(os.path.dirname(base_directory))
         run_module = os.path.relpath(run_file).replace("/", ".")[:-3]
-        print(args)
-        print(run_module)
-        print(common.args_to_run_array(args))
         subprocess.run(["python3", "-m", run_module] + common.args_to_run_array(args), check=True)
         common.copy_data_files(directory, base_directory, component, args.f, args.b)
         print("finished " + directory)

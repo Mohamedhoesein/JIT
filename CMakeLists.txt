@@ -25,7 +25,7 @@ separate_arguments(LLVM_DEFINITIONS_LIST NATIVE_COMMAND ${LLVM_DEFINITIONS})
 add_compile_definitions(${LLVM_DEFINITIONS_LIST})
 
 # Build the jit
-add_executable(jit FrontEnd.cpp
+add_executable(jit main.cpp
         reOptimize/ReOptimizeLayer.cpp
         reOptimize/ReOptimizeLayer.h
         reOptimize/RedirectionManager.cpp

@@ -1,9 +1,10 @@
 #ifndef JIT_UTIL_H
 #define JIT_UTIL_H
 
+#include <ctime>
 #include <iostream>
-#include <vector>
 #include <string>
+#include <vector>
 #include "llvm/IR/Module.h"
 
 
@@ -26,7 +27,22 @@ struct Arguments {
     std::string ApplicationArguments;
 };
 
+#define LOG_TYPES     \
+X(List, "LIST")       /* If you want to list all values of a specific tag. */\
+X(Average, "AVERAGE") /* If you want to take the average of all the values of the tag. */
+
+#define X(type, name) type,
+enum LogType : size_t
+{
+    LOG_TYPES
+};
+#undef X
+
+void print_log_data(const std::string& tag, LogType type, const std::string& data);
+
 std::vector<std::string> split(const std::string& string, char delimiter);
+
+std::vector<std::string> split_once(const std::string& string, char delimiter);
 
 struct Arguments getArguments(int argc, char **argv);
 

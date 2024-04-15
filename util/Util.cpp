@@ -6,12 +6,32 @@
 
 #include "Util.h"
 
+#define X(type, name) name,
+char const *log_type_name[] =
+        {
+                LOG_TYPES
+        };
+#undef X
+
+void print_log_data(const std::string& tag, LogType type, const std::string& data) {
+    auto result = std::time(nullptr);
+    std::cout << "[DATA," << result << "," << log_type_name[type] << "," << tag << "] " << " "
+              << data << std::endl;
+}
+
 std::vector<std::string> split(const std::string& string, const char delimiter) {
     std::stringstream stream(string);
     std::string segment;
     std::vector<std::string> parts;
     while (std::getline(stream, segment, delimiter))
         parts.push_back(segment);
+    return parts;
+}
+
+std::vector<std::string> split_once(const std::string& string, const char delimiter) {
+    std::vector<std::string> parts;
+    parts.emplace_back(string.substr(0, string.find(delimiter)));
+    parts.emplace_back(string.substr(string.find(delimiter) + 1));
     return parts;
 }
 

@@ -110,6 +110,7 @@ llvm::orc::JIT::JIT(std::unique_ptr<llvm::orc::ExecutionSession> ES,
                 llvm::orc::ThreadSafeModule &TSM) {
                     if (llvm::orc::JIT::UseReOptimize)
                         TSM.withModuleDo([](Module &M) {
+                            print_log_data("Recompiled", LogType::List, std::string(M.getName()));
                             llvm::LoopAnalysisManager lam;
                             llvm::FunctionAnalysisManager fam;
                             llvm::CGSCCAnalysisManager cgam;
@@ -145,7 +146,7 @@ llvm::Expected<std::unique_ptr<llvm::orc::BaseJIT>> llvm::orc::JIT::create(llvm:
     llvm::orc::JIT::UseOptimize = false;
     llvm::orc::JIT::UseReOptimize = false;
     for (const auto& argument : Arguments) {
-        auto splitArgument = split(argument, '=');
+        auto splitArgument = split_once(argument, '=');
         if (splitArgument[0] == "-opt") {
             llvm::orc::JIT::UseOptimize = true;
             llvm::orc::JIT::Optimize = splitArgument[1];
@@ -234,7 +235,7 @@ llvm::Error llvm::orc::JIT::addModule(llvm::orc::ThreadSafeModule ThreadSafeModu
             }))
         return Err;
 
-    return this->OptimizeLayer->add(std::move(ResourceTracker), std::move(ThreadSafeModule));
+    return this->ReOptimizeLayer->add(std::move(ResourceTracker), std::move(ThreadSafeModule));
 }
 
 llvm::Expected<llvm::orc::ExecutorSymbolDef> llvm::orc::JIT::lookup(llvm::StringRef Name) {

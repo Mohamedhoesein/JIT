@@ -77,7 +77,7 @@ def parse_compile_args() -> typing.Any:
     parser.add_argument('-e', action="store_true", help="If some external reference implementation will be compiled.")
     parser.add_argument('-b', action="store_true", help="If the jit will be compiled.")
     args = parser.parse_args()
-    if not args.e and args.b:
+    if not args.e and not args.b:
         print("Defaulted to -b.")
         args.b = True
     return args
@@ -108,4 +108,4 @@ def run(path: str,
 
 
 def args_to_compile_array(args: typing.Any) -> [str]:
-    return (["-e"] if args.e else []) + (["-b"] if args.b else [])
+    return (["-e"] if args.e else []) + (["-b"] if args.b is not None else [])

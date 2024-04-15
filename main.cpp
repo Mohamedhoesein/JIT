@@ -28,11 +28,11 @@ int main(int argc, char **argv) {
     for (const auto& file : arguments.Files) {
         PRINT_ERROR(
                 !hasEnding(file, ".ll"),
-                "An invalid file was given: \"" << file << "\""
+                "An invalid file was given: " << file
         )
         PRINT_ERROR(
                 !std::filesystem::exists(file),
-                "The given file does not exist: \"" << file << "\""
+                "The given file does not exist: " << file
         )
     }
 
