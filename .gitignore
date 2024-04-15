@@ -1,8 +1,8 @@
 .idea/
 cmake-build-debug/
 
-benchmarks/**/jit/
-benchmarks/**/reference/
+benchmark/**/jit/
+benchmark/**/reference/
 benchmark/data/
 lib/**/
 
