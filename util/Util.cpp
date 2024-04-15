@@ -29,7 +29,7 @@ struct Arguments getArguments(int argc, char **argv) {
 
         switch (character) {
             case 'f':
-                arguments.Files = split(optarg, ' ');
+                arguments.Files = split(optarg, ',');
                 break;
             case 'b':
                 arguments.BackEndArguments = optarg;

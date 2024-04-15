@@ -1,19 +1,13 @@
 #include "llvm/ADT/StringRef.h"
-#include "llvm/IR/Module.h"
-#include "llvm/IR/LLVMContext.h"
 #include "llvm/Support/SourceMgr.h"
 #include "llvm/Support/TargetSelect.h"
 #include "llvm/Support/Error.h"
 #include <filesystem>
 
 #include "front-end/BaseFrontend.h"
-#include "JIT/BaseJIT.h"
+#include "back-end/BaseJIT.h"
 #include "util/StringToArgv.h"
 #include "util/Util.h"
-
-llvm::Expected<CaptureModule> AddModule(llvm::StringRef Name) {
-    return llvm::createStringError(std::error_code(), "No JIT selected.");
-}
 
 int main(int argc, char **argv) {
     llvm::InitializeNativeTarget();

@@ -1,0 +1,2 @@
+removed parallel due to implementation issues
+removed sequential/anagram due to being inconsistent when running native

@@ -1,7 +1,7 @@
 #ifndef JIT_BASEFRONTEND_H
 #define JIT_BASEFRONTEND_H
 
-#include "../JIT/BaseJIT.h"
+#include "../back-end/BaseJIT.h"
 
 class BaseFrontend {
 public:

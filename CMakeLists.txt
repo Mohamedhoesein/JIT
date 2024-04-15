@@ -7,7 +7,7 @@ set(CMAKE_PREFIX_PATH "./lib/llvm")
 set(NO_RTTI "-fno-rtti")
 set(LLVM_ENABLE_ASSERTIONS ON)
 add_compile_options(${NO_RTTI})
-SET(FRONTEND "LLVM_FORNTEND")
+SET(FRONTEND "LLVM_FRONTEND")
 add_compile_definitions(${FRONTEND})
 set(JIT "SIMPLE_JIT_BACK_END")
 add_compile_definitions(${JIT})
@@ -32,14 +32,14 @@ add_executable(jit FrontEnd.cpp
         reOptimize/RedirectionManager.h
         reOptimize/JITLinkRedirectableSymbolManager.cpp
         reOptimize/JITLinkRedirectableSymbolManager.h
-        JIT/JIT.h
-        JIT/JIT.cpp
-        JIT/BaseJIT.h
-        JIT/BaseJit.cpp
         util/StringToArgv.cpp
         util/StringToArgv.h
         util/Util.cpp
         util/Util.h
+        back-end/JIT.h
+        back-end/JIT.cpp
+        back-end/BaseJIT.h
+        back-end/BaseJit.cpp
         front-end/BaseFrontend.h
         front-end/BaseFrontend.cpp
         front-end/LLVMFrontend.cpp
