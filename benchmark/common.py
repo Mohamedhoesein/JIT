@@ -191,7 +191,6 @@ def persist_data_files(path: str, frontend: str, back_end: str) -> None:
 
 def copy_data(source: str, target: str, frontend: str, back_end: str, persist: bool) -> None:
     append_file(source, target)
-    add_new_line(target)
     if persist:
         persist_data_files(target, frontend, back_end)
 
@@ -201,12 +200,12 @@ def simple_copy_data_files(subdirectory: str, base_directory: str, component: Co
 
 
 def copy_data_files(
-    subdirectory: str,
-    base_directory: str,
-    component: Component,
-    frontend: str,
-    back_end: str,
-    persist: bool = True
+        subdirectory: str,
+        base_directory: str,
+        component: Component,
+        frontend: str,
+        back_end: str,
+        persist: bool = True
 ) -> None:
     if component == Component.REFERENCE or component == Component.BOTH:
         benchmark_reference = get_time_data_reference_file(subdirectory)
@@ -242,21 +241,26 @@ def add_quote(string: str) -> str:
 
 
 def run_command(
-    name: str,
-    time_data_file: str,
-    command: [str],
-    first: bool,
-    last: bool,
-    other_data_extraction: typing.Callable[[subprocess.CompletedProcess[bytes]], typing.List[str]],
-    other_data_file: str,
-    args: str
+        name: str,
+        time_data_file: str,
+        command: [str],
+        first: bool,
+        last: bool,
+        other_data_extraction: typing.Callable[[subprocess.CompletedProcess[bytes]], typing.List[str]],
+        other_data_file: str,
+        extra: str
 ) -> None:
     process = subprocess.run(
         [
             "/usr/bin/time",
             "-q", "-a", "-o" + time_data_file,
-                        "-f" + ((name + ",\"" + args + "\",") if first else "")
-                        + "\"%e\",\"%K\",\"%x\"" + ("\n" if last else ",")
+                        "-f" + (
+                            (
+                                f"\"{name}\"" +
+                                (f",\"{extra}\"," if extra != "" and extra is not None else ",")
+                            ) if first else ""
+                        ) +
+                        "\"%e\",\"%K\",\"%x\"" + ("\n" if last else ",")
         ] + command,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE
@@ -264,9 +268,10 @@ def run_command(
     other_data = other_data_extraction(process)
     other_data = list(map(lambda x: "\"" + x + "\"", other_data))
     if first:
-        other_data = [name + ",\"" + args + "\""] + other_data
-    other_data_row = str("," if not first and len(other_data) != 0 else "") + str(",".join(other_data)) + str(
-        "\n" if last else "")
+        other_data = ([f"\"{name}\""] +
+                      ([f"\"{extra}\""] if extra != "" and extra is not None else []) +
+                      other_data)
+    other_data_row = ("," if not first and len(other_data) != 0 else "") + ",".join(other_data) + ("\n" if last else "")
     with open(other_data_file, "a") as f:
         f.write(other_data_row)
 
@@ -376,15 +381,14 @@ def valid_back_end(back_end: str) -> bool:
 
 
 def run(
-    path: str,
-    jit: str,
-    prefix: str,
-    arguments: typing.Callable[[str], typing.List[str]],
-    reference_command: typing.Callable[[str], str],
-    jit_files: typing.Callable[[str], str],
-    component_data: ComponentData
+        path: str,
+        jit: str,
+        prefix: str,
+        arguments: typing.Callable[[str], typing.List[str]],
+        reference_command: typing.Callable[[str], typing.List[str]],
+        jit_files: typing.Callable[[str], str],
+        component_data: ComponentData
 ) -> None:
-    jit_directories = get_all_directories(get_jit_directory(path))
     benchmark_reference = get_time_data_reference_file(path)
     other_reference = get_other_data_reference_file(path)
     benchmark_jit = get_time_data_jit_file(path)
@@ -392,31 +396,36 @@ def run(
     remove_files([benchmark_reference, other_reference, benchmark_jit, other_jit])
     if component_data.for_reference():
         recreate_file([benchmark_reference, other_reference])
-    if component_data.for_jit():
-        recreate_file([benchmark_jit, other_jit])
-    for jit_directory in jit_directories:
-        print("started running " + jit_directory)
-        full_reference_directory = os.path.join(get_reference_directory(path), jit_directory)
-        full_jit_directory = os.path.join(get_jit_directory(path), jit_directory)
-        sources = jit_files(full_jit_directory)
-        reference_args = arguments(full_jit_directory)
-        jit_args = [jit_directory] + reference_args
-        reference = reference_command(full_reference_directory)
-        if component_data.for_reference():
+        reference_directories = get_all_directories(get_reference_directory(path))
+        for reference_directory in reference_directories:
+            print(f"started running {reference_directory}")
+            full_reference_directory = os.path.join(get_reference_directory(path), reference_directory)
+            reference = reference_command(full_reference_directory)
+            reference_args = arguments(full_reference_directory)
             for i in range(get_repeats()):
                 run_command(
-                    (prefix if prefix.endswith("/") else prefix + "/") + jit_directory,
+                    (prefix if prefix.endswith("/") else prefix + "/") + reference_directory,
                     benchmark_reference,
-                    [reference] + reference_args,
+                    reference + reference_args,
                     i == 0,
                     i == 4,
                     component_data.reference_data_extraction,
                     other_reference,
                     ""
                 )
-        if component_data.for_jit():
+            print(f"finished running {reference_directory}")
+        clean_benchmark_csv(benchmark_reference)
+        clean_other_csv(other_reference)
+    if component_data.for_jit():
+        recreate_file([benchmark_jit, other_jit])
+        jit_directories = get_all_directories(get_jit_directory(path))
+        for jit_directory in jit_directories:
+            print(f"started running {jit_directory}")
+            full_jit_directory = os.path.join(get_jit_directory(path), jit_directory)
+            sources = jit_files(full_jit_directory)
+            jit_args = [jit_directory] + arguments(full_jit_directory)
             for b in component_data.back_end:
-                print("started running args: " + b.name)
+                print(f"started running {b.name}")
                 for i in range(get_repeats()):
                     run_command(
                         (prefix if prefix.endswith("/") else prefix + "/") + jit_directory + " " + b.name,
@@ -428,13 +437,8 @@ def run(
                         other_jit,
                         b.args
                     )
-                print("finished running args: " + b.name)
-        print("finished running " + jit_directory)
-
-    if component_data.for_reference():
-        clean_benchmark_csv(benchmark_reference)
-        clean_other_csv(other_reference)
-    if component_data.for_jit():
+                print(f"finished running {b.name}")
+            print(f"finished running {jit_directory}")
         clean_benchmark_csv(benchmark_jit)
         clean_other_csv(other_jit)
 
@@ -479,7 +483,8 @@ def parse_jit_args() -> typing.Any:
     parser.add_argument('-e', action="store_true",
                         help="If some external reference implementation will be ran for their performance.")
     args = parser.parse_args()
-    args.b = args.b[0]
+    if args.b is not None:
+        args.b = args.b[0]
     if args.j is not None and not valid_back_end(args.b):
         print("Invalid back-end given.")
         exit(-1)
@@ -502,7 +507,8 @@ def full_parse_jit_args() -> typing.Any:
     parser.add_argument('-e', action="store_true",
                         help="If some external reference implementation will be ran for their performance.")
     args = parser.parse_args()
-    args.b = args.b[0]
+    if args.b is not None:
+        args.b = args.b[0]
     if not valid_frontend(args.f):
         print("Invalid frontend given.")
         exit(-1)
@@ -516,7 +522,9 @@ def full_parse_jit_args() -> typing.Any:
 
 
 def args_to_run_array(args: typing.Any) -> [str]:
-    return ["-j", args.j] + (["-b", args.b] if args.b != "" and args.b is not None else []) + (["-e"] if args.e else [])
+    return ((["-j", args.j] if args.j is not None else []) +
+            (["-b", args.b] if args.b != "" and args.b is not None else []) +
+            (["-e"] if args.e else []))
 
 
 def compile_args_to_component(args: typing.Any) -> Component:
@@ -529,7 +537,7 @@ def compile_args_to_component(args: typing.Any) -> Component:
 
 
 def args_to_component(args: typing.Any) -> Component:
-    if args.b != "" and args.e:
+    if args.b != "" and args.b is not None and args.e:
         return Component.BOTH
     elif args.e:
         return Component.REFERENCE

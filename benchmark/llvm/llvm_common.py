@@ -29,7 +29,7 @@ def compile(
     for source in sources:
         target = source.replace("/", "_").replace("\\", "_")
         full_source = os.path.join(source_directory, source)
-        print("started compiling " + source)
+        print(f"started compiling {source}")
         source_files = common.get_source_files(full_source, filter)
         source_files += common.get_recursive_source_files(includes, filter)
         full_reference_target = os.path.join(reference_directory, target)
@@ -51,7 +51,7 @@ def compile(
                 + source_files
             )
         additional_steps(full_source, full_reference_target, full_jit_target, component)
-        print("finished compiling " + source)
+        print(f"finished compiling {source}")
 
 
 def get_llvm_files(path: str) -> [str]:
@@ -65,8 +65,8 @@ def get_llvm_files(path: str) -> [str]:
     return sources
 
 
-def get_reference_file_name(path: str):
-    return os.path.join(path, "a.out")
+def get_reference_file_name(path: str) -> [str]:
+    return [os.path.join(path, "a.out")]
 
 
 def parse_compile_args() -> typing.Any:
