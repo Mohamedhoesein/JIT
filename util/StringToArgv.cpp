@@ -2,6 +2,7 @@
 #include <iostream>
 #include <cstring>
 #include "StringToArgv.h"
+#include "Util.h"
 
 #ifndef NUL
 #define NUL '\0'
@@ -177,4 +178,16 @@ static str_to_argv_err_t copy_cooked_string(char ** dest_p, char ** src_p)
                 break;
         }
     }
+}
+
+str_to_argv_err_t string_to_argv_vector(char const *str, std::vector<std::string>* argv_p) {
+    int argc;
+    char **argv;
+    str_to_argv_err_t r = string_to_argv(str, &argc, &argv);
+    if (r != 0)
+        return r;
+    argv_p->reserve(argc);
+    for (int i = 0; i < argc; i++)
+        argv_p->emplace_back(argv[i]);
+    return str_to_argv_err_t::STR2AV_OK;
 }

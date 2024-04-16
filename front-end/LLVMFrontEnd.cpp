@@ -4,7 +4,7 @@
 LLVMFrontEnd::LLVMFrontEnd(std::unique_ptr<llvm::orc::BaseJIT> JIT)
     : JIT(std::move(JIT)) {}
 
-llvm::Expected<std::unique_ptr<BaseFrontEnd>> LLVMFrontEnd::create(std::vector<std::string> Files, std::unique_ptr<llvm::orc::BaseJIT> JIT) {
+llvm::Expected<std::unique_ptr<BaseFrontEnd>> LLVMFrontEnd::create(std::vector<std::string> Arguments, std::vector<std::string> Files, std::unique_ptr<llvm::orc::BaseJIT> JIT) {
     for (const auto& file : Files) {
         std::unique_ptr<llvm::LLVMContext> context = std::make_unique<llvm::LLVMContext>();
         std::unique_ptr<llvm::Module> module = load_module(file, *context);

@@ -43,13 +43,16 @@ struct Arguments getArguments(int argc, char **argv) {
     };
     int character;
     while (true) {
-        character = getopt(argc, argv, "f:b:a:");
+        character = getopt(argc, argv, "i:r:b:a:");
         if (character == -1)
             break;
 
         switch (character) {
-            case 'f':
+            case 'i':
                 arguments.Files = split(optarg, ',');
+                break;
+            case 'r':
+                arguments.FrontEndArguments = optarg;
                 break;
             case 'b':
                 arguments.BackEndArguments = optarg;
@@ -79,7 +82,6 @@ std::unique_ptr<llvm::Module> load_module(llvm::StringRef file, llvm::LLVMContex
     return module;
 }
 
-//https://stackoverflow.com/questions/874134/find-out-if-string-ends-with-another-string-in-c
 bool hasEnding(std::string const &fullString, std::string const &ending) {
     if (fullString.length() >= ending.length()) {
         return (0 == fullString.compare(fullString.length() - ending.length(), ending.length(), ending));

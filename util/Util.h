@@ -30,6 +30,10 @@ struct Arguments {
      */
     std::vector<std::string> Files;
     /**
+     * The arguments for the front-end.
+     */
+    std::string FrontEndArguments;
+    /**
      * The arguments for the back-end.
      */
     std::string BackEndArguments;

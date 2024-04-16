@@ -46,11 +46,13 @@ class ComponentData:
     def __init__(
             self,
             component: Component,
+            front_end_args: str,
             back_end: typing.List[BackEndArgs],
             jit_data_extraction: typing.Callable[[subprocess.CompletedProcess[bytes]], typing.List[str]],
             reference_data_extraction: typing.Callable[[subprocess.CompletedProcess[bytes]], typing.List[str]]
     ):
         self.component = component
+        self.front_end_args = front_end_args
         self.back_end = back_end
         self.jit_data_extraction = jit_data_extraction
         self.reference_data_extraction = reference_data_extraction
@@ -430,7 +432,8 @@ def run(
                     run_command(
                         (prefix if prefix.endswith("/") else prefix + "/") + jit_directory + " " + b.name,
                         benchmark_jit,
-                        [jit, "-f", ",".join(sources), "-a", " ".join(jit_args), "-b", b.args],
+                        [jit, "-i", ",".join(sources), "-a", " ".join(jit_args), "-b", b.args] +
+                        (["-o", component_data.front_end_args] if component_data.front_end_args != "" else []),
                         i == 0,
                         i == 4,
                         component_data.jit_data_extraction,

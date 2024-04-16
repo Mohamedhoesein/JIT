@@ -21,11 +21,12 @@ public:
     ~LLVMFrontEnd() override = default;
     /**
      * Create the front-end based on a compiler flag.
+     * @param Arguments Arguments for the front-end.
      * @param Files The files the front-end should load.
      * @param JIT The back-end that will execute the code.
      * @return An object with either the front-end or an error depending on if the creation was successful.
      */
-    static llvm::Expected<std::unique_ptr<BaseFrontEnd>> create(std::vector<std::string> Files, std::unique_ptr<llvm::orc::BaseJIT> JIT);
+    static llvm::Expected<std::unique_ptr<BaseFrontEnd>> create(std::vector<std::string> Arguments, std::vector<std::string> Files, std::unique_ptr<llvm::orc::BaseJIT> JIT);
     /**
      * Always create an error since everything should be loaded ahead of time.
      * @param Name The fully qualified name of the class or function that should be loaded.

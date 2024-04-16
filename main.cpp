@@ -1,7 +1,5 @@
-#include "llvm/ADT/StringRef.h"
 #include "llvm/Support/SourceMgr.h"
 #include "llvm/Support/TargetSelect.h"
-#include "llvm/Support/Error.h"
 #include <filesystem>
 
 #include "front-end/BaseFrontEnd.h"
@@ -44,30 +42,32 @@ int main(int argc, char **argv) {
             "Invalid arguments for the application."
     )
 
-    int backEndArgc;
-    char **backEndArgv;
-    r = string_to_argv(arguments.BackEndArguments.c_str(), &backEndArgc, &backEndArgv);
+    std::vector<std::string> backEndArguments;
+    r = string_to_argv_vector(arguments.BackEndArguments.c_str(), &backEndArguments);
     PRINT_ERROR(
             r != 0,
-            "Invalid arguments for the backend."
+            "Invalid arguments for the back-end."
     )
-    std::vector<std::string> backEndArguments;
-    backEndArguments.reserve(backEndArgc);
-    for (int i = 0; i < backEndArgc; i++)
-        backEndArguments.emplace_back(backEndArgv[i]);
-    auto jit = llvm::orc::BaseJIT::create(BaseFrontEnd::requestModule, backEndArguments);
 
+    auto jit = llvm::orc::BaseJIT::create(BaseFrontEnd::requestModule, backEndArguments);
     PRINT_ERROR(
             !jit,
-            "An error occurred when creating the jit." << std::endl << toString(jit.takeError())
+            "An error occurred when creating the jit."
+    )
+
+    std::vector<std::string> frontEndArguments;
+    r = string_to_argv_vector(arguments.FrontEndArguments.c_str(), &frontEndArguments);
+    PRINT_ERROR(
+            r != 0,
+            "Invalid arguments for the front-end."
     )
 
     std::unique_ptr<llvm::orc::BaseJIT> true_jit = std::move(*jit);
-    auto frontend = BaseFrontEnd::create(arguments.Files, std::move(true_jit));
+    auto frontend = BaseFrontEnd::create(frontEndArguments, arguments.Files, std::move(true_jit));
 
     PRINT_ERROR(
             !frontend,
-            "An error occurred when adding the module."
+            "An error occurred when creating the front-end."
     )
 
     auto true_frontend = std::move(*frontend);

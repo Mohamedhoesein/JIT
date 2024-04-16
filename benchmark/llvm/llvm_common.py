@@ -101,6 +101,7 @@ def run(
         get_llvm_files,
         common.ComponentData(
             component,
+            "",
             common.back_end_args(back_end),
             jit_data_extraction,
             common.default_data_extraction

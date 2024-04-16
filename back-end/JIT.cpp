@@ -211,7 +211,6 @@ llvm::Error llvm::orc::JIT::addModule(llvm::orc::ThreadSafeModule ThreadSafeModu
 }
 
 llvm::Error llvm::orc::JIT::addModule(llvm::orc::ThreadSafeModule ThreadSafeModule, llvm::orc::ResourceTrackerSP ResourceTracker) {
-    this->addModule(std::move(ThreadSafeModule));
     if (ResourceTracker == nullptr)
         ResourceTracker = this->MainJD->getDefaultResourceTracker();
     if (auto Err =

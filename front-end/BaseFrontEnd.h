@@ -16,11 +16,12 @@ public:
      * Create a front-end based on a compiler flag. When creating a new front-ned add it in an elifdef directive with a
      * unique macro is required, also add the callback to request a module to the requestModule function. Add benchmarks
      * to the benchmark folder, it should be a top-level folder with a run.py script.
+     * @param Arguments Arguments for the front-end.
      * @param Files The files the front-end should load.
      * @param JIT The back-end that will execute the code.
      * @return An object with either the front-end or an error depending on if the creation was successful.
      */
-    static llvm::Expected<std::unique_ptr<BaseFrontEnd>> create(std::vector<std::string> Files, std::unique_ptr<llvm::orc::BaseJIT> JIT);
+    static llvm::Expected<std::unique_ptr<BaseFrontEnd>> create(std::vector<std::string> Arguments, std::vector<std::string> Files, std::unique_ptr<llvm::orc::BaseJIT> JIT);
     /**
      * Load the module based on the name.
      * @param Name The fully qualified name of the class or function that should be loaded.
