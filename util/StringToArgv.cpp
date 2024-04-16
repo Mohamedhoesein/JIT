@@ -1,4 +1,3 @@
-// https://stackoverflow.com/questions/2342162/stdstring-formatting-like-sprintf
 #include <cstdlib>
 #include <iostream>
 #include <cstring>
@@ -8,11 +7,11 @@
 #define NUL '\0'
 #endif
 
-static str_to_argv_err_t
-copy_raw_string(char ** dest_p, char ** src_p);
+static str_to_argv_err_t copy_raw_string(char ** dest_p, char ** src_p);
 
-static str_to_argv_err_t
-copy_cooked_string(char ** dest_p, char ** src_p);
+static str_to_argv_err_t copy_cooked_string(char ** dest_p, char ** src_p);
+
+static char escape_convt(char ** src_p);
 
 str_to_argv_err_t string_to_argv(char const * str, int * argc_p, char *** argv_p)
 {

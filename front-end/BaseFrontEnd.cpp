@@ -9,7 +9,7 @@ llvm::Expected<std::unique_ptr<BaseFrontEnd>> BaseFrontEnd::create(std::vector<s
 #endif
 }
 
-llvm::Expected<CaptureModule> BaseFrontEnd::requestModule(llvm::StringRef Name) {
+llvm::Expected<struct llvm::orc::CaptureModule> BaseFrontEnd::requestModule(llvm::StringRef Name) {
 #ifdef LLVM_FRONT_END
     return LLVMFrontEnd::requestModule(Name);
 #else

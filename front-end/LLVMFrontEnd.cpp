@@ -18,7 +18,7 @@ llvm::Expected<std::unique_ptr<BaseFrontEnd>> LLVMFrontEnd::create(std::vector<s
     return std::make_unique<LLVMFrontEnd>(std::move(JIT));
 }
 
-llvm::Expected<CaptureModule> LLVMFrontEnd::requestModule(llvm::StringRef Name) {
+llvm::Expected<struct llvm::orc::CaptureModule> LLVMFrontEnd::requestModule(llvm::StringRef Name) {
     return llvm::createStringError(std::error_code(), "Everything should be loaded.");
 }
 

@@ -56,8 +56,8 @@ llvm::orc::JIT::JIT(std::unique_ptr<llvm::orc::ExecutionSession> ES,
          llvm::DataLayout DL,
          std::unique_ptr<llvm::orc::RedirectableSymbolManager> RSM,
          std::unique_ptr<llvm::orc::ObjectLinkingLayer> OLayer,
-         llvm::orc::RequestModuleCallback AM)
-        : BaseJIT(std::move(AM)), ExecutionSession(std::move(ES)),
+         llvm::orc::RequestModuleCallback RM)
+        : BaseJIT(std::move(RM)), ExecutionSession(std::move(ES)),
           EPCIU(std::move(EPCIU)), DataLayout(DL),
           Mangle(*this->ExecutionSession, this->DataLayout),
           MainJD(this->ExecutionSession->getJITDylibByName("main")),
@@ -211,6 +211,7 @@ llvm::Error llvm::orc::JIT::addModule(llvm::orc::ThreadSafeModule ThreadSafeModu
 }
 
 llvm::Error llvm::orc::JIT::addModule(llvm::orc::ThreadSafeModule ThreadSafeModule, llvm::orc::ResourceTrackerSP ResourceTracker) {
+    this->addModule(std::move(ThreadSafeModule));
     if (ResourceTracker == nullptr)
         ResourceTracker = this->MainJD->getDefaultResourceTracker();
     if (auto Err =

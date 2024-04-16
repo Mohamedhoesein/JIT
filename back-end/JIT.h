@@ -1,15 +1,3 @@
-//===- KaleidoscopeJIT.h - A simple JIT for Kaleidoscope --------*- C++ -*-===//
-//
-// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
-// See https://llvm.org/LICENSE.txt for license information.
-// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
-//
-//===----------------------------------------------------------------------===//
-//
-// Contains a simple JIT definition for use in the kaleidoscope tutorials.
-//
-//===----------------------------------------------------------------------===//
-
 #ifndef JIT_JIT_H
 #define JIT_JIT_H
 
@@ -28,6 +16,9 @@
 
 namespace llvm {
     namespace orc {
+        /**
+         * A simple JIT setup, with optimisation and a single reoptimisation step.
+         */
         class JIT: public BaseJIT {
         private:
             std::unique_ptr<llvm::orc::ExecutionSession> ExecutionSession;
@@ -56,17 +47,46 @@ namespace llvm {
             static Expected<ThreadSafeModule> optimizeModule(ThreadSafeModule ThreadSafeModule, const MaterializationResponsibility &R);
             Error applyDataLayout(Module &Module);
         public:
-            JIT(std::unique_ptr<llvm::orc::ExecutionSession> parent,
+            /**
+             * The constructor for the JIT, please use the create method.
+             * @see JIT::create(llvm::orc::RequestModuleCallback, std::vector<std::string>).
+             * @param ES The execution session to use.
+             * @param EPCIU The indirection utilities to used.
+             * @param JTMB The target machine builder.
+             * @param DL The data layout to use.
+             * @param TSM The object to handle redirection for recompilation.
+             * @param OL The object linking layer.
+             * @param RM The callback used to request more information from the front-end.
+             */
+            JIT(std::unique_ptr<llvm::orc::ExecutionSession> ES,
                 std::unique_ptr<llvm::orc::EPCIndirectionUtils> EPCIU,
-                llvm::orc::JITTargetMachineBuilder CurrentVersion,
-                llvm::DataLayout OldResourceTracker,
+                llvm::orc::JITTargetMachineBuilder JTMB,
+                llvm::DataLayout DL,
                 std::unique_ptr<llvm::orc::RedirectableSymbolManager> TSM,
                 std::unique_ptr<llvm::orc::ObjectLinkingLayer> OL,
-                llvm::orc::RequestModuleCallback AM);
+                llvm::orc::RequestModuleCallback RM);
+            /**
+             * The destructor to deallocate resource associated with the JIT.
+             */
             ~JIT() override;
+            /**
+             * Create the JIT.
+             * @param RequestModule The callback that is used by the back-end to request another module from the front-end.
+             * @param Arguments The arguments for the back-end.
+             * @return An object with either the jit or an error depending on if the lookup was successful.
+             */
             static Expected<std::unique_ptr<llvm::orc::BaseJIT>> create(llvm::orc::RequestModuleCallback AddModule, std::vector<std::string> Arguments);
+            /**
+             * @copydoc llvm::orc::BaseJIT::addModule(llvm::orc::ThreadSafeModule)
+             */
             Error addModule(llvm::orc::ThreadSafeModule ThreadSafeModule) override;
+            /**
+             * @copydoc llvm::orc::BaseJIT::addModule(llvm::orc::ThreadSafeModule, llvm::orc::ResourceTrackerSP)
+             */
             Error addModule(llvm::orc::ThreadSafeModule ThreadSafeModule, llvm::orc::ResourceTrackerSP ResourceTracker) override;
+            /**
+             * @copydoc llvm::orc::BaseJIT::lookup(llvm::StringRef)
+             */
             Expected<ExecutorSymbolDef> lookup(llvm::StringRef Name) override;
         };
 

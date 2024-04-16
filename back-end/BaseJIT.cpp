@@ -3,8 +3,8 @@
 #include "BaseJIT.h"
 #include "JIT.h"
 
-llvm::orc::BaseJIT::BaseJIT(RequestModuleCallback AM)
-    : RequestModule(std::move(AM)) {}
+llvm::orc::BaseJIT::BaseJIT(RequestModuleCallback RM)
+    : RequestModule(std::move(RM)) {}
 
 llvm::Error llvm::orc::BaseJIT::requestModule(StringRef Name) {
     auto module = this->RequestModule(Name);
