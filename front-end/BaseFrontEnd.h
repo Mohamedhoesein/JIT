@@ -3,10 +3,10 @@
 
 #include "../back-end/BaseJIT.h"
 
-class BaseFrontend {
+class BaseFrontEnd {
 public:
-    virtual ~BaseFrontend() = default;
-    static llvm::Expected<std::unique_ptr<BaseFrontend>> create(std::vector<std::string> Files, std::unique_ptr<llvm::orc::BaseJIT> JIT);
+    virtual ~BaseFrontEnd() = default;
+    static llvm::Expected<std::unique_ptr<BaseFrontEnd>> create(std::vector<std::string> Files, std::unique_ptr<llvm::orc::BaseJIT> JIT);
     static llvm::Expected<CaptureModule> requestModule(llvm::StringRef Name);
     virtual llvm::Expected<int> start(int argc, char **argv) = 0;
 };

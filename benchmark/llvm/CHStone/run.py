@@ -12,7 +12,7 @@ def main(args: typing.Any):
         args.j,
         llvm_common.get_llvm_prefix() + "/CHStone",
         common.default_arguments,
-        common.backend_parsing(args.b),
+        common.back_end_parsing(args.b),
         common.args_to_component(args),
         args.b
     )

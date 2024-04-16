@@ -21,6 +21,7 @@ class Data:
 class LogType(Enum):
     List = 1
     Average = 2
+
     @staticmethod
     def from_string(name: str):
         if name == "LIST":
@@ -45,18 +46,17 @@ class ComponentData:
     def __init__(
             self,
             component: Component,
-            backend: typing.List[BackEndArgs],
+            back_end: typing.List[BackEndArgs],
             jit_data_extraction: typing.Callable[[subprocess.CompletedProcess[bytes]], typing.List[str]],
             reference_data_extraction: typing.Callable[[subprocess.CompletedProcess[bytes]], typing.List[str]]
     ):
         self.component = component
-        self.backend = backend
+        self.back_end = back_end
         self.jit_data_extraction = jit_data_extraction
         self.reference_data_extraction = reference_data_extraction
 
     def for_reference(self):
         return self.component == Component.REFERENCE or self.component == Component.BOTH
-
 
     def for_jit(self):
         return self.component == Component.JIT or self.component == Component.BOTH
@@ -176,23 +176,24 @@ def add_new_line(file: str) -> None:
         f.write("\n")
 
 
-def persist_data_files(path: str, frontend: str, backend: str) -> None:
+def persist_data_files(path: str, frontend: str, back_end: str) -> None:
     data_directory = get_data_directory(os.path.dirname(__file__))
     if not os.path.isdir(data_directory):
         os.makedirs(data_directory)
     basename = os.path.basename(path)
-    basename = datetime.now().strftime("%Y.%m.%d.%H.%M.%S") + "." + frontend + ("." + backend if backend is not None else "") + "_" + basename
+    basename = datetime.now().strftime("%Y.%m.%d.%H.%M.%S") + "." + frontend + (
+        "." + back_end if back_end is not None else "") + "." + basename
     target = os.path.join(data_directory, basename)
 
     subprocess.run(["cat " + path + " >> " + target], shell=True, check=True)
     remove_if_exists(path)
 
 
-def copy_data(source: str, target: str, frontend: str, backend: str, persist: bool) -> None:
+def copy_data(source: str, target: str, frontend: str, back_end: str, persist: bool) -> None:
     append_file(source, target)
     add_new_line(target)
     if persist:
-        persist_data_files(target, frontend, backend)
+        persist_data_files(target, frontend, back_end)
 
 
 def simple_copy_data_files(subdirectory: str, base_directory: str, component: Component) -> None:
@@ -200,30 +201,30 @@ def simple_copy_data_files(subdirectory: str, base_directory: str, component: Co
 
 
 def copy_data_files(
-        subdirectory: str,
-        base_directory: str,
-        component: Component,
-        frontend: str,
-        backend: str,
-        persist: bool = True
+    subdirectory: str,
+    base_directory: str,
+    component: Component,
+    frontend: str,
+    back_end: str,
+    persist: bool = True
 ) -> None:
     if component == Component.REFERENCE or component == Component.BOTH:
         benchmark_reference = get_time_data_reference_file(subdirectory)
         base_benchmark_reference = get_time_data_reference_file(base_directory)
-        copy_data(benchmark_reference, base_benchmark_reference, frontend, backend, persist)
+        copy_data(benchmark_reference, base_benchmark_reference, frontend, back_end, persist)
 
         other_reference = get_other_data_reference_file(subdirectory)
         base_other_reference = get_other_data_reference_file(base_directory)
-        copy_data(other_reference, base_other_reference, frontend, backend, persist)
+        copy_data(other_reference, base_other_reference, frontend, back_end, persist)
 
     if component == Component.JIT or component == Component.BOTH:
         benchmark_jit = get_time_data_jit_file(subdirectory)
         base_benchmark_jit = get_time_data_jit_file(base_directory)
-        copy_data(benchmark_jit, base_benchmark_jit, frontend, backend, persist)
+        copy_data(benchmark_jit, base_benchmark_jit, frontend, back_end, persist)
 
         other_jit = get_other_data_jit_file(subdirectory)
         base_other_jit = get_other_data_jit_file(base_directory)
-        copy_data(other_jit, base_other_jit, frontend, backend, persist)
+        copy_data(other_jit, base_other_jit, frontend, back_end, persist)
 
 
 def copy_file(full_source: str, directory: str, file: str) -> None:
@@ -241,14 +242,14 @@ def add_quote(string: str) -> str:
 
 
 def run_command(
-        name: str,
-        time_data_file: str,
-        command: [str],
-        first: bool,
-        last: bool,
-        other_data_extraction: typing.Callable[[subprocess.CompletedProcess[bytes]], typing.List[str]],
-        other_data_file: str,
-        args: str
+    name: str,
+    time_data_file: str,
+    command: [str],
+    first: bool,
+    last: bool,
+    other_data_extraction: typing.Callable[[subprocess.CompletedProcess[bytes]], typing.List[str]],
+    other_data_file: str,
+    args: str
 ) -> None:
     process = subprocess.run(
         [
@@ -317,7 +318,7 @@ def default_data_extraction(result: subprocess.CompletedProcess[bytes]) -> [str]
     return []
 
 
-def simple_backend_data_extraction(result: subprocess.CompletedProcess[bytes]) -> [str]:
+def simple_back_end_data_extraction(result: subprocess.CompletedProcess[bytes]) -> [str]:
     lines = result.stdout.splitlines()
     data: [Data] = []
     for line in lines:
@@ -353,35 +354,35 @@ def simple_backend_data_extraction(result: subprocess.CompletedProcess[bytes]) -
     return result
 
 
-def backend_args(backend: str) -> [BackEndArgs]:
-    if not valid_backend(backend):
+def back_end_args(back_end: str) -> [BackEndArgs]:
+    if not valid_back_end(back_end):
         return BackEndArgs("None", "")
-    return backend_args_map()[backend]
+    return back_end_args_map()[back_end]
 
 
-def backend_parsing_map() -> dict:
-    mapping = {"simple": simple_backend_data_extraction}
+def back_end_parsing_map() -> dict:
+    mapping = {"simple": simple_back_end_data_extraction}
     return mapping
 
 
-def backend_parsing(backend: str) -> typing.Callable[[subprocess.CompletedProcess[bytes]], typing.List[str]]:
-    if not valid_backend(backend):
+def back_end_parsing(back_end: str) -> typing.Callable[[subprocess.CompletedProcess[bytes]], typing.List[str]]:
+    if not valid_back_end(back_end):
         return default_data_extraction
-    return backend_parsing_map()[backend]
+    return back_end_parsing_map()[back_end]
 
 
-def valid_backend(backend: str) -> bool:
-    return backend in backend_parsing_map()
+def valid_back_end(back_end: str) -> bool:
+    return back_end in back_end_parsing_map()
 
 
 def run(
-        path: str,
-        jit: str,
-        prefix: str,
-        arguments: typing.Callable[[str], typing.List[str]],
-        reference_command: typing.Callable[[str], str],
-        jit_files: typing.Callable[[str], str],
-        component_data: ComponentData
+    path: str,
+    jit: str,
+    prefix: str,
+    arguments: typing.Callable[[str], typing.List[str]],
+    reference_command: typing.Callable[[str], str],
+    jit_files: typing.Callable[[str], str],
+    component_data: ComponentData
 ) -> None:
     jit_directories = get_all_directories(get_jit_directory(path))
     benchmark_reference = get_time_data_reference_file(path)
@@ -414,7 +415,7 @@ def run(
                     ""
                 )
         if component_data.for_jit():
-            for b in component_data.backend:
+            for b in component_data.back_end:
                 print("started running args: " + b.name)
                 for i in range(get_repeats()):
                     run_command(
@@ -444,7 +445,7 @@ def valid_frontend(frontend: str) -> bool:
     return frontend in directories
 
 
-def backend_args_map() -> dict:
+def back_end_args_map() -> dict:
     mapping = {
         "simple": [
             BackEndArgs(
@@ -474,13 +475,13 @@ def parse_jit_args() -> typing.Any:
     )
     parser.add_argument('-j', help="The jit to use.")
     parser.add_argument('-b', nargs=1,
-                        help="The backend that is used in the jit, this determines how to parse the additional information from the jit.")
+                        help="The back-end that is used in the jit, this determines how to parse the additional information from the jit.")
     parser.add_argument('-e', action="store_true",
                         help="If some external reference implementation will be ran for their performance.")
     args = parser.parse_args()
     args.b = args.b[0]
-    if args.j is not None and not valid_backend(args.b):
-        print("Invalid backend given.")
+    if args.j is not None and not valid_back_end(args.b):
+        print("Invalid back-end given.")
         exit(-1)
     if args.j is None and args.b is not None and args.e is not None:
         print("Ignored the -b flag.")
@@ -497,7 +498,7 @@ def full_parse_jit_args() -> typing.Any:
     parser.add_argument('-f', required=True,
                         help="The frontend that is used in the jit, this determines which folder is taken.")
     parser.add_argument('-b', nargs=1,
-                        help="The backend that is used in the jit, this determines how to parse the additional information from the jit.")
+                        help="The back-end that is used in the jit, this determines how to parse the additional information from the jit.")
     parser.add_argument('-e', action="store_true",
                         help="If some external reference implementation will be ran for their performance.")
     args = parser.parse_args()
@@ -505,8 +506,8 @@ def full_parse_jit_args() -> typing.Any:
     if not valid_frontend(args.f):
         print("Invalid frontend given.")
         exit(-1)
-    elif args.j is not None and not valid_backend(args.b):
-        print("Invalid backend given.")
+    elif args.j is not None and not valid_back_end(args.b):
+        print("Invalid back-end given.")
         exit(-1)
     if args.j is None and args.b is not None and args.e is not None:
         print("Ignored the -b flag.")

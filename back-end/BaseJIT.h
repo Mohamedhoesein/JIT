@@ -17,12 +17,12 @@ namespace llvm {
 
         class BaseJIT {
         protected:
-            RequestModuleCallback AddModule;
+            RequestModuleCallback RequestModule;
             explicit BaseJIT(RequestModuleCallback AM);
             llvm::Error requestModule(llvm::StringRef Name);
         public:
             virtual ~BaseJIT() = default;
-            static llvm::Expected<std::unique_ptr<llvm::orc::BaseJIT>> create(RequestModuleCallback AddModule, std::vector<std::string> Arguments);
+            static llvm::Expected<std::unique_ptr<llvm::orc::BaseJIT>> create(RequestModuleCallback RequestModule, std::vector<std::string> Arguments);
             virtual llvm::Error addModule(llvm::orc::ThreadSafeModule ThreadSafeModule) = 0;
             virtual llvm::Error addModule(llvm::orc::ThreadSafeModule ThreadSafeModule, llvm::orc::ResourceTrackerSP ResourceTracker) = 0;
             virtual llvm::Expected<llvm::orc::ExecutorSymbolDef> lookup(llvm::StringRef Name) = 0;

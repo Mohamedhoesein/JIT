@@ -4,7 +4,7 @@
 #include "llvm/Support/Error.h"
 #include <filesystem>
 
-#include "front-end/BaseFrontend.h"
+#include "front-end/BaseFrontEnd.h"
 #include "back-end/BaseJIT.h"
 #include "util/StringToArgv.h"
 #include "util/Util.h"
@@ -55,7 +55,7 @@ int main(int argc, char **argv) {
     backEndArguments.reserve(backEndArgc);
     for (int i = 0; i < backEndArgc; i++)
         backEndArguments.emplace_back(backEndArgv[i]);
-    auto jit = llvm::orc::BaseJIT::create(BaseFrontend::requestModule, backEndArguments);
+    auto jit = llvm::orc::BaseJIT::create(BaseFrontEnd::requestModule, backEndArguments);
 
     PRINT_ERROR(
             !jit,
@@ -63,7 +63,7 @@ int main(int argc, char **argv) {
     )
 
     std::unique_ptr<llvm::orc::BaseJIT> true_jit = std::move(*jit);
-    auto frontend = BaseFrontend::create(arguments.Files, std::move(true_jit));
+    auto frontend = BaseFrontEnd::create(arguments.Files, std::move(true_jit));
 
     PRINT_ERROR(
             !frontend,

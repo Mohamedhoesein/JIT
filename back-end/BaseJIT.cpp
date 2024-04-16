@@ -4,10 +4,10 @@
 #include "JIT.h"
 
 llvm::orc::BaseJIT::BaseJIT(RequestModuleCallback AM)
-    : AddModule(std::move(AM)) {}
+    : RequestModule(std::move(AM)) {}
 
 llvm::Error llvm::orc::BaseJIT::requestModule(StringRef Name) {
-    auto module = this->AddModule(Name);
+    auto module = this->RequestModule(Name);
     if (!module)
         return module.takeError();
     return this->addModule(std::move(module->threadSafeModule), module->resourceTracker);

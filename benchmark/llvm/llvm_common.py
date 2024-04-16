@@ -12,12 +12,12 @@ def get_llvm_prefix() -> str:
 
 
 def compile(
-        sources: [str],
-        base_directory: str,
-        includes: [str],
-        filter: typing.Callable[[str], bool],
-        additional_steps: typing.Callable[[str, str, str, common.Component], None],
-        component: common.Component
+    sources: [str],
+    base_directory: str,
+    includes: [str],
+    filter: typing.Callable[[str], bool],
+    additional_steps: typing.Callable[[str, str, str, common.Component], None],
+    component: common.Component
 ) -> None:
     source_directory = common.get_source_directory(base_directory)
     reference_directory = common.get_reference_directory(base_directory)
@@ -38,7 +38,7 @@ def compile(
             os.chdir(full_reference_target)
             subprocess.run(
                 ["clang-17", "-O3", "-lm"]
-                + list(map(lambda x: "-I"+x, includes))
+                + list(map(lambda x: "-I" + x, includes))
                 + source_files
             )
         full_jit_target = os.path.join(jit_directory, target)
@@ -47,7 +47,7 @@ def compile(
             os.chdir(full_jit_target)
             subprocess.run(
                 ["clang-17", "-S", "-emit-llvm", "-O", "-Xclang", "-disable-llvm-passes"]
-                + list(map(lambda x: "-I"+x, includes))
+                + list(map(lambda x: "-I" + x, includes))
                 + source_files
             )
         additional_steps(full_source, full_reference_target, full_jit_target, component)
@@ -83,13 +83,14 @@ def parse_compile_args() -> typing.Any:
     return args
 
 
-def run(path: str,
-        jit: str,
-        prefix: str,
-        arguments: typing.Callable[[str], typing.List[str]],
-        jit_data_extraction: typing.Callable[[subprocess.CompletedProcess[bytes]], typing.List[str]],
-        component: common.Component,
-        backend: str
+def run(
+    path: str,
+    jit: str,
+    prefix: str,
+    arguments: typing.Callable[[str], typing.List[str]],
+    jit_data_extraction: typing.Callable[[subprocess.CompletedProcess[bytes]], typing.List[str]],
+    component: common.Component,
+    back_end: str
 ) -> None:
     common.run(
         path,
@@ -100,7 +101,7 @@ def run(path: str,
         get_llvm_files,
         common.ComponentData(
             component,
-            common.backend_args(backend),
+            common.back_end_args(back_end),
             jit_data_extraction,
             common.default_data_extraction
         )
