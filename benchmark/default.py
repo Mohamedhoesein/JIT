@@ -64,4 +64,4 @@ def default_back_end_data_extraction(result: subprocess.CompletedProcess[bytes])
 
 
 def default_front_end_data_extraction(result: subprocess.CompletedProcess[bytes]) -> [str]:
-    return base_data_extraction(result, classes.LogPart.BackEnd)
+    return base_data_extraction(result, classes.LogPart.FrontEnd)

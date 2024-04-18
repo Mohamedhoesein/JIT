@@ -110,7 +110,7 @@ llvm::orc::JIT::JIT(std::unique_ptr<llvm::orc::ExecutionSession> ES,
                 llvm::orc::ThreadSafeModule &TSM) {
                     if (llvm::orc::JIT::UseReOptimize)
                         TSM.withModuleDo([](Module &M) {
-                            print_log_data("Recompiled", LogType::List, LogPart::BackEnd, std::string(M.getName()));
+                            print_log_data("Recompiled", LogType::List, LogPart::BackEnd, "recompiled module " + std::string(M.getName()));
                             llvm::LoopAnalysisManager lam;
                             llvm::FunctionAnalysisManager fam;
                             llvm::CGSCCAnalysisManager cgam;

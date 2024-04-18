@@ -102,7 +102,7 @@ def jit_other_data_extraction(
         front_end: typing.Callable[[subprocess.CompletedProcess[bytes]], typing.List[str]],
         back_end: typing.Callable[[subprocess.CompletedProcess[bytes]], typing.List[str]]
 ) -> typing.Callable[[subprocess.CompletedProcess[bytes]], typing.List[str]]:
-    return lambda a: front_end(a) + back_end(a)
+    return lambda a: [",".join(front_end(a)), ",".join(back_end(a))]
 
 
 def run(
