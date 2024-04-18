@@ -13,9 +13,16 @@ char const *log_type_name[] =
         };
 #undef X
 
-void print_log_data(const std::string& tag, LogType type, const std::string& data) {
+#define X(type, name) name,
+char const *log_part_name[] =
+        {
+                LOG_PART
+        };
+#undef X
+
+void print_log_data(const std::string& tag, LogType type, LogPart part, const std::string& data) {
     auto result = std::time(nullptr);
-    std::cout << "[DATA," << result << "," << log_type_name[type] << "," << tag << "] " << " "
+    std::cout << "[DATA," << result << "," << log_type_name[type] << "," << log_part_name[part] << "," << tag << "] " << " "
               << data << std::endl;
 }
 
@@ -38,6 +45,7 @@ std::vector<std::string> split_once(const std::string& string, const char delimi
 struct Arguments getArguments(int argc, char **argv) {
     struct Arguments arguments = (struct Arguments){
             .Files = {},
+            .FrontEndArguments = "",
             .BackEndArguments = "",
             .ApplicationArguments = ""
     };

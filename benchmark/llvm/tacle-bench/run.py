@@ -3,6 +3,7 @@ import typing
 
 from .. import llvm_common
 from ... import common
+from ... import default
 
 
 def main(args: typing.Any):
@@ -11,7 +12,7 @@ def main(args: typing.Any):
         base_directory,
         args.j,
         llvm_common.get_llvm_prefix() + "/tacle-bench",
-        common.default_arguments,
+        default.default_arguments,
         common.back_end_parsing(args.b),
         common.args_to_component(args),
         args.b

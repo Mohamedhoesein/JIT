@@ -1,6 +1,8 @@
 #ifndef JIT_STRINGTOARGV_H
 #define JIT_STRINGTOARGV_H
 
+#include <vector>
+
 /**
  * An indication of the from a string to argv is successful.
  */

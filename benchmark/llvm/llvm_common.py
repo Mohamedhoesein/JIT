@@ -5,6 +5,9 @@ import typing
 import argparse
 
 from .. import common
+from .. import classes
+from .. import default
+from .. import files
 
 
 def get_llvm_prefix() -> str:
@@ -15,13 +18,13 @@ def compile(
     sources: [str],
     base_directory: str,
     includes: [str],
-    filter: typing.Callable[[str], bool],
-    additional_steps: typing.Callable[[str, str, str, common.Component], None],
-    component: common.Component
+    filter_source_files: typing.Callable[[str], bool],
+    additional_steps: typing.Callable[[str, str, str, classes.Component], None],
+    component: classes.Component
 ) -> None:
-    source_directory = common.get_source_directory(base_directory)
-    reference_directory = common.get_reference_directory(base_directory)
-    jit_directory = common.get_jit_directory(base_directory)
+    source_directory = files.get_source_directory(base_directory)
+    reference_directory = files.get_reference_directory(base_directory)
+    jit_directory = files.get_jit_directory(base_directory)
     if os.path.exists(reference_directory):
         shutil.rmtree(reference_directory)
     if os.path.exists(jit_directory):
@@ -30,10 +33,10 @@ def compile(
         target = source.replace("/", "_").replace("\\", "_")
         full_source = os.path.join(source_directory, source)
         print(f"started compiling {source}")
-        source_files = common.get_source_files(full_source, filter)
-        source_files += common.get_recursive_source_files(includes, filter)
+        source_files = files.get_source_files(full_source, filter_source_files)
+        source_files += files.get_recursive_source_files(includes, filter_source_files)
         full_reference_target = os.path.join(reference_directory, target)
-        if component == common.Component.REFERENCE or component == common.Component.BOTH:
+        if component == classes.Component.REFERENCE or component == classes.Component.BOTH:
             os.makedirs(full_reference_target)
             os.chdir(full_reference_target)
             subprocess.run(
@@ -42,7 +45,7 @@ def compile(
                 + source_files
             )
         full_jit_target = os.path.join(jit_directory, target)
-        if component == common.Component.JIT or component == common.Component.BOTH:
+        if component == classes.Component.JIT or component == classes.Component.BOTH:
             os.makedirs(full_jit_target)
             os.chdir(full_jit_target)
             subprocess.run(
@@ -88,8 +91,8 @@ def run(
     jit: str,
     prefix: str,
     arguments: typing.Callable[[str], typing.List[str]],
-    jit_data_extraction: typing.Callable[[subprocess.CompletedProcess[bytes]], typing.List[str]],
-    component: common.Component,
+    back_end_extraction: typing.Callable[[subprocess.CompletedProcess[bytes]], typing.List[str]],
+    component: classes.Component,
     back_end: str
 ) -> None:
     common.run(
@@ -99,12 +102,13 @@ def run(
         arguments,
         get_reference_file_name,
         get_llvm_files,
-        common.ComponentData(
+        classes.ComponentData(
             component,
             "",
             common.back_end_args(back_end),
-            jit_data_extraction,
-            common.default_data_extraction
+            default.default_front_end_data_extraction,
+            back_end_extraction,
+            default.none_data_extraction
         )
     )
 

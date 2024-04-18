@@ -54,13 +54,25 @@ enum LogType : size_t
 };
 #undef X
 
+#define LOG_PART         \
+X(FrontEnd, "FRONT-END") /* If you log as part of the back-end. */\
+X(BackEnd, "BACK-END")   /* If you log as part of the front-end. */
+
+#define X(type, name) type,
+enum LogPart : size_t
+{
+    LOG_PART
+};
+#undef X
+
 /**
  * Print data to the console.
  * @param tag A tag for the data to group the data by.
  * @param type The type of the data.
+ * @param part The part of the jit for which the log is.
  * @param data The data to print.
  */
-void print_log_data(const std::string& tag, LogType type, const std::string& data);
+void print_log_data(const std::string& tag, LogType type, LogPart part, const std::string& data);
 
 /**
  * Split the string based on a delimiter.

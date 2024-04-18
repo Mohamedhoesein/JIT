@@ -3,18 +3,20 @@ import typing
 
 from .. import llvm_common
 from ... import common
+from ... import default
+from ... import files
 
 
 def main(args: typing.Any):
     base_directory = os.path.dirname(__file__)
-    source_directory = common.get_source_directory(base_directory)
-    sources = common.get_all_directories(source_directory)
+    source_directory = files.get_source_directory(base_directory)
+    sources = files.get_all_directories(source_directory)
     llvm_common.compile(
         sources,
         base_directory,
         [],
-        common.default_filter,
-        common.default_additional_steps,
+        default.default_filter_files,
+        default.default_additional_steps,
         common.compile_args_to_component(args)
     )
 
