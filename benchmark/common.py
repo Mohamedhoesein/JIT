@@ -1,3 +1,7 @@
+"""
+This module contains functions that are shared between multiple modules no matter the front-end.
+"""
+
 import os
 import subprocess
 import typing
@@ -9,14 +13,21 @@ from . import classes
 
 
 def get_repeats():
+    """
+    Get how many times each benchmark should be run.
+    :return: How many times each benchmark should be run.
+    """
     return 5
 
 
 def add_quote(string: str) -> str:
-    if string[0] != "\"":
-        string = "\"" + string
-    if string[-1] != "\"":
-        string = string + "\""
+    """
+    Add a quote around a string if it is not present.
+    :param string:
+    :return:
+    """
+    if string[0] != "\"" and string[-1] != "\"":
+        string = f"\"{string}\""
     return string
 
 
@@ -30,6 +41,18 @@ def run_command(
         other_data_file: str,
         extra: str
 ) -> None:
+    """
+    Run a command and generate some csv files with the data. For the result of the time command will be added to a new
+    line no matter what.
+    :param name: A nice name for the current run, which will we placed in the first column of the row, if first is True.
+    :param time_data_file: The name of the file where the result of the time command should be put.
+    :param command: The command to run.
+    :param first: If this is the first command to be run for the current command.
+    :param last: If this is the last command to be run for the current command.
+    :param other_data_extraction: A callback to extract any other information from the command.
+    :param other_data_file: The name of the file where the extra data should be put.
+    :param extra: Any extra information to place in the csv file.
+    """
     process = subprocess.run(
         [
             "/usr/bin/time",
@@ -37,7 +60,7 @@ def run_command(
                         "-f" + (
                             (
                                 f"\"{name}\"" +
-                                (f",\"{extra}\"," if extra != "" and extra is not None else ",")
+                                (f",{extra}," if extra != "" and extra is not None else ",")
                             ) if first else ""
                         ) +
                         "\"%e\",\"%K\",\"%x\"" + ("\n" if last else ",")
@@ -49,15 +72,19 @@ def run_command(
     other_data = list(map(lambda x: "\"" + x + "\"", other_data))
     if first:
         other_data = ([f"\"{name}\""] +
-                      ([f"\"{extra}\""] if extra != "" and extra is not None else []) +
+                      ([extra] if extra != "" and extra is not None else []) +
                       other_data)
     other_data_row = ("," if not first and len(other_data) != 0 else "") + ",".join(other_data) + ("\n" if last else "")
     with open(other_data_file, "a") as f:
         f.write(other_data_row)
 
 
-# https://stackoverflow.com/questions/1877999/delete-final-line-in-file-with-python
 def clean_other_csv(file: str) -> None:
+    """
+    Clean the other data csv file, by removing the extra line at the end.
+    This is taken from https://stackoverflow.com/questions/1877999/delete-final-line-in-file-with-python
+    :param file: The file to clean.
+    """
     with open(file, "r+", encoding="utf-8") as file:
         file.seek(0, os.SEEK_END)
 
@@ -73,109 +100,29 @@ def clean_other_csv(file: str) -> None:
 
 
 def clean_benchmark_csv(file: str) -> None:
+    """
+    Clean benchmark data from the time command. First we make sure that the results for a single command are on a single
+    line. Then any empty lines between different runs will also be removed.
+    :param file: The file to clean.
+    """
     files.search_and_replace(file, "\n\"", "\"")
     files.search_and_replace(file, "\n\n", "\n")
 
 
 def back_end_parsing_map() -> dict:
+    """
+    The map between different back-ends for the JIT and a function to extract data from it.
+    :return: The map itself.
+    """
     mapping = {"simple": default.default_back_end_data_extraction}
     return mapping
 
 
-def back_end_args(back_end: str) -> [classes.Args]:
-    if not valid_back_end(back_end):
-        return classes.Args("None", "")
-    return back_end_args_map()[back_end]
-
-
-def back_end_parsing(back_end: str) -> typing.Callable[[subprocess.CompletedProcess[bytes]], typing.List[str]]:
-    if not valid_back_end(back_end):
-        return default.default_back_end_data_extraction
-    return back_end_parsing_map()[back_end]
-
-
-def valid_back_end(back_end: str) -> bool:
-    return back_end in back_end_parsing_map()
-
-
-def jit_other_data_extraction(
-        front_end: typing.Callable[[subprocess.CompletedProcess[bytes]], typing.List[str]],
-        back_end: typing.Callable[[subprocess.CompletedProcess[bytes]], typing.List[str]]
-) -> typing.Callable[[subprocess.CompletedProcess[bytes]], typing.List[str]]:
-    return lambda a: [",".join(front_end(a)), ",".join(back_end(a))]
-
-
-def run(
-        path: str,
-        jit: str,
-        prefix: str,
-        arguments: typing.Callable[[str], typing.List[str]],
-        reference_command: typing.Callable[[str], typing.List[str]],
-        jit_files: typing.Callable[[str], str],
-        component_data: classes.ComponentData
-) -> None:
-    benchmark_reference = files.get_time_data_reference_file(path)
-    other_reference = files.get_other_data_reference_file(path)
-    benchmark_jit = files.get_time_data_jit_file(path)
-    other_jit = files.get_other_data_jit_file(path)
-    files.remove_files([benchmark_reference, other_reference, benchmark_jit, other_jit])
-    if component_data.for_reference():
-        files.recreate_file([benchmark_reference, other_reference])
-        reference_directories = files.get_all_directories(files.get_reference_directory(path))
-        for reference_directory in reference_directories:
-            print(f"started running {reference_directory}")
-            full_reference_directory = os.path.join(files.get_reference_directory(path), reference_directory)
-            reference = reference_command(full_reference_directory)
-            reference_args = arguments(full_reference_directory)
-            for i in range(get_repeats()):
-                run_command(
-                    (prefix if prefix.endswith("/") else prefix + "/") + reference_directory,
-                    benchmark_reference,
-                    reference + reference_args,
-                    i == 0,
-                    i == 4,
-                    component_data.reference_data_extraction,
-                    other_reference,
-                    ""
-                )
-            print(f"finished running {reference_directory}")
-        clean_benchmark_csv(benchmark_reference)
-        clean_other_csv(other_reference)
-    if component_data.for_jit():
-        files.recreate_file([benchmark_jit, other_jit])
-        jit_directories = files.get_all_directories(files.get_jit_directory(path))
-        for jit_directory in jit_directories:
-            print(f"started running {jit_directory}")
-            full_jit_directory = os.path.join(files.get_jit_directory(path), jit_directory)
-            sources = jit_files(full_jit_directory)
-            jit_args = [jit_directory] + arguments(full_jit_directory)
-            for b in component_data.back_end:
-                print(f"started running {b.name}")
-                for i in range(get_repeats()):
-                    run_command(
-                        (prefix if prefix.endswith("/") else prefix + "/") + jit_directory + " " + b.name,
-                        benchmark_jit,
-                        [jit, "-i", ",".join(sources), "-a", " ".join(jit_args), "-b", b.args] +
-                        (["-r", component_data.front_end_args] if component_data.front_end_args != "" else []),
-                        i == 0,
-                        i == 4,
-                        jit_other_data_extraction(component_data.front_end_extraction, component_data.back_end_extraction),
-                        other_jit,
-                        b.args
-                    )
-                print(f"finished running {b.name}")
-            print(f"finished running {jit_directory}")
-        clean_benchmark_csv(benchmark_jit)
-        clean_other_csv(other_jit)
-
-
-def valid_frontend(frontend: str) -> bool:
-    base_directory = os.path.dirname(__file__)
-    directories = files.get_all_directories(base_directory)
-    return frontend in directories
-
-
 def back_end_args_map() -> dict:
+    """
+    The map between different back-ends for the JIT and the different standard arguments..
+    :return: The map itself.
+    """
     mapping = {
         "simple": [
             classes.Args(
@@ -198,7 +145,135 @@ def back_end_args_map() -> dict:
     return mapping
 
 
+def back_end_parsing(back_end: str) -> typing.Callable[[subprocess.CompletedProcess[bytes]], typing.List[str]]:
+    """
+    Get the function that handles the data parsing for a back-end.
+    :param back_end: The name of the back-end.
+    :return: The function that handles the data parsing for a back-end
+    """
+    return back_end_parsing_map()[back_end]
+
+
+def back_end_args(back_end: str) -> [classes.Args]:
+    """
+    Get the arguments for the back-end.
+    :param back_end: The name of the back-end.
+    :return: The arguments for the back-end.
+    """
+    return back_end_args_map()[back_end]
+
+
+def valid_back_end(back_end: str) -> bool:
+    """
+    Check if the back-end is valid, which means that there is a parsing function and arguments defined for it.
+    :param back_end: The back-end to check.
+    :return: True if the back-end is valid.
+    """
+    return back_end in back_end_parsing_map()
+
+
+def jit_other_data_extraction(
+        front_end: typing.Callable[[subprocess.CompletedProcess[bytes]], typing.List[str]],
+        back_end: typing.Callable[[subprocess.CompletedProcess[bytes]], typing.List[str]]
+) -> typing.Callable[[subprocess.CompletedProcess[bytes]], typing.List[str]]:
+    """
+    A single wrapper function for the data extraction from the front-end and back-end. The results will be concatenated
+    into a single array.
+    :param front_end: The callback for the front-end.
+    :param back_end: The callback for the back-end.
+    :return: A callback that will call the callback for the front-end followed by the callback for the back-end.
+    """
+    return lambda a: front_end(a) + back_end(a)
+
+
+def run(
+        path: str,
+        prefix: str,
+        arguments: typing.Callable[[str], typing.List[str]],
+        component_data: classes.ComponentData
+) -> None:
+    """
+    Run the benchmarks in the JIT, reference implementation, or both.
+    :param path: The path to the benchmark folder.
+    :param prefix: Any prefix that should be included in the name of the run in the csv file.
+    :param arguments: A callback to get additional arguments for the benchmark.
+    :param component_data:
+    :return:
+    """
+    benchmark_reference = files.get_time_data_reference_file(path)
+    other_reference = files.get_other_data_reference_file(path)
+    benchmark_jit = files.get_time_data_jit_file(path)
+    other_jit = files.get_other_data_jit_file(path)
+    files.remove_files([benchmark_reference, other_reference, benchmark_jit, other_jit])
+    if component_data.for_reference():
+        files.recreate_file([benchmark_reference, other_reference])
+        reference_directories = files.get_all_directories(files.get_reference_directory(path))
+        for reference_directory in reference_directories:
+            print(f"started running {reference_directory}")
+            full_reference_directory = os.path.join(files.get_reference_directory(path), reference_directory)
+            reference = component_data.reference_command(full_reference_directory)
+            reference_args = arguments(full_reference_directory)
+            for i in range(get_repeats()):
+                run_command(
+                    (prefix if prefix.endswith("/") else prefix + "/") + reference_directory,
+                    benchmark_reference,
+                    reference + reference_args,
+                    i == 0,
+                    i == 4,
+                    component_data.reference_data_extraction,
+                    other_reference,
+                    ""
+                )
+            print(f"finished running {reference_directory}")
+        clean_benchmark_csv(benchmark_reference)
+        clean_other_csv(other_reference)
+    if component_data.for_jit():
+        files.recreate_file([benchmark_jit, other_jit])
+        jit_directories = files.get_all_directories(files.get_jit_directory(path))
+        for jit_directory in jit_directories:
+            print(f"started running {jit_directory}")
+            full_jit_directory = os.path.join(files.get_jit_directory(path), jit_directory)
+            sources = component_data.jit_files(full_jit_directory)
+            jit_args = [jit_directory] + arguments(full_jit_directory)
+            for f in component_data.front_end_args:
+                print(f"started running front-end args {f.name}")
+                for b in component_data.back_end_args:
+                    print(f"started running back-end args {b.name}")
+                    for i in range(get_repeats()):
+                        run_command(
+                            (prefix if prefix.endswith("/") else prefix + "/") + jit_directory + " " + b.name,
+                            benchmark_jit,
+                            [component_data.jit, "-i", ",".join(sources), "-a", " ".join(jit_args), "-b", b.args] +
+                            (["-r", f.args] if f.args != "" else []),
+                            i == 0,
+                            i == 4,
+                            jit_other_data_extraction(component_data.front_end_extraction, component_data.back_end_extraction),
+                            other_jit,
+                            f"front-end {f.name}:{f.args},back-end {b.name}:{b.args}"
+                        )
+                    print(f"finished running back-end args {b.name}")
+                print(f"finished running front-end args {f.name}")
+            print(f"finished running {jit_directory}")
+        clean_benchmark_csv(benchmark_jit)
+        clean_other_csv(other_jit)
+
+
+def valid_front_end(front_end: str) -> bool:
+    """
+    Check if the front-end is valid by checking if there is a folder present for the front-end with a run.py script.
+    :param front_end: The front-end to check.
+    :return: True if the front-end is valid, otherwise False.
+    """
+    base_directory = os.path.dirname(__file__)
+    directories = files.get_all_directories(base_directory)
+    return front_end in directories and os.path.isfile(os.path.join(base_directory, front_end, "run.py"))
+
+
 def parse_jit_args() -> typing.Any:
+    """
+    Parse command line arguments for the run script of a benchmark for a specific front-end.
+    :return: The objects with the properties set which are related to the set command line arguments.
+    """
     parser = argparse.ArgumentParser(
         prog="benchmark",
         description="Benchmark the jit and run some reference implementation."
@@ -221,6 +296,10 @@ def parse_jit_args() -> typing.Any:
 
 
 def full_parse_jit_args() -> typing.Any:
+    """
+    Parse command line arguments for the top-level run script.
+    :return: The objects with the properties set which are related to the set command line arguments.
+    """
     parser = argparse.ArgumentParser(
         prog="benchmark",
         description="Benchmark the jit and run some reference implementation."
@@ -235,7 +314,7 @@ def full_parse_jit_args() -> typing.Any:
     args = parser.parse_args()
     if args.b is not None:
         args.b = args.b[0]
-    if not valid_frontend(args.f):
+    if not valid_front_end(args.f):
         print("Invalid frontend given.")
         exit(-1)
     elif args.j is not None and not valid_back_end(args.b):
@@ -248,21 +327,22 @@ def full_parse_jit_args() -> typing.Any:
 
 
 def args_to_run_array(args: typing.Any) -> [str]:
+    """
+    Convert the arguments object for parse_jit_args() to an array of strings to pass to the run command.
+    :param args: The argument to convert.
+    :return: An array of strings to pass to the run command
+    """
     return ((["-j", args.j] if args.j is not None else []) +
             (["-b", args.b] if args.b != "" and args.b is not None else []) +
             (["-e"] if args.e else []))
 
 
-def compile_args_to_component(args: typing.Any) -> classes.Component:
-    if args.b and args.e:
-        return classes.Component.BOTH
-    elif args.e:
-        return classes.Component.REFERENCE
-    else:
-        return classes.Component.JIT
-
-
 def args_to_component(args: typing.Any) -> classes.Component:
+    """
+    Convert the run arguments to a classes.Component.
+    :param args: The arguments to convert.
+    :return: The classes.Component that is associated with the arguments.
+    """
     if args.b != "" and args.b is not None and args.e:
         return classes.Component.BOTH
     elif args.e:

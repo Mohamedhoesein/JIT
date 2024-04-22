@@ -1,3 +1,7 @@
+"""
+This module is the main entry point to run benchmarks for LLVM.
+"""
+
 import os
 import subprocess
 import typing
@@ -8,13 +12,17 @@ from .. import files
 
 
 def main(args: typing.Any):
+    """
+    The main function for running LLVM benchmarks.
+    :param args: The arguments passed via the console, see common.parse_jit_args().
+    """
     base_directory = os.path.dirname(__file__)
     directories = files.get_all_concat_directories(base_directory)
     files.remove_data_files(base_directory)
     component = common.args_to_component(args)
     for directory in directories:
         print("started " + directory)
-        compile_file = files.add_compile_file(directory)
+        compile_file = llvm_common.add_compile_file(directory)
         run_file = files.add_run_file(directory)
         if not os.path.isfile(compile_file) or not os.path.isfile(run_file):
             print("finished " + directory)

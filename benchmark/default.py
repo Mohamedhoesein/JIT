@@ -1,27 +1,51 @@
+"""
+This module contains different default callbacks that are shared between multiple modules no matter the front-end.
+"""
+
 import subprocess
 from itertools import groupby
 
 from . import classes
 
 
-def default_filter_files(name: str) -> bool:
-    return True
-
-
 def default_additional_steps(full_source: str, full_reference_target: str, full_jit_target: str,
                              component: classes.Component) -> None:
+    """
+    The default for any additional steps to be taken.
+    :param full_source: The full path to the source code.
+    :param full_reference_target: The path to the target directory for the reference implementation.
+    :param full_jit_target: The path to the target directory for the JIT implementation.
+    :param component: The description of what implementation is used.
+    """
     pass
 
 
 def default_arguments(directory: str) -> [str]:
+    """
+    The default for the retrieval of any additional arguments to run a benchmark, always returns an empty array.
+    :param directory: The directory of the executed code.
+    :return: The additional arguments.
+    """
     return []
 
 
 def none_data_extraction(result: subprocess.CompletedProcess[bytes]) -> [str]:
+    """
+    The default for no data extraction, always returns an empty array.
+    :param result: The result from the subprocess finished.
+    :return: The results.
+    """
     return []
 
 
 def base_data_extraction(result: subprocess.CompletedProcess[bytes], part: classes.LogPart) -> [str]:
+    """
+    The default data extraction from the JIT, "[DATA,time,type,part,tag] data", with data being the data to process. The
+    rest is described in classes.Data.
+    :param result: The result from the subprocess finished.
+    :param part: If it is for the front-end or back-end.
+    :return: The results for each tag.
+    """
     lines = result.stdout.splitlines()
     data: [classes.Data] = []
     for line in lines:
@@ -55,13 +79,23 @@ def base_data_extraction(result: subprocess.CompletedProcess[bytes], part: class
     result = []
 
     for k in sorted(mapped.keys()):
-        result.append(mapped[k])
+        result.append(f"{k}: {mapped[k]}")
     return result
 
 
 def default_back_end_data_extraction(result: subprocess.CompletedProcess[bytes]) -> [str]:
+    """
+    The default data extraction from the JIT back-end.
+    :param result: The result from the subprocess finished.
+    :return: The results for each tag.
+    """
     return base_data_extraction(result, classes.LogPart.BackEnd)
 
 
 def default_front_end_data_extraction(result: subprocess.CompletedProcess[bytes]) -> [str]:
+    """
+    The default data extraction from the JIT front-end.
+    :param result: The result from the subprocess finished.
+    :return: The results for each tag.
+    """
     return base_data_extraction(result, classes.LogPart.FrontEnd)

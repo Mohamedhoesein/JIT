@@ -1,3 +1,7 @@
+"""
+This is the main entry point to run tacle-bench.
+"""
+
 import os
 import typing
 
@@ -7,6 +11,10 @@ from ... import default
 
 
 def main(args: typing.Any):
+    """
+    The main function for running tacle-bench.
+    :param args: The arguments passed via the console, see common.parse_jit_args().
+    """
     base_directory = os.path.dirname(__file__)
     llvm_common.run(
         base_directory,

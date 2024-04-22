@@ -1,3 +1,7 @@
+"""
+This module is the main entry point to run some benchmark.
+"""
+
 import os
 import subprocess
 import typing
@@ -7,6 +11,10 @@ from . import files
 
 
 def main(args: typing.Any):
+    """
+    The main function for running benchmarks.
+    :param args: The arguments passed via the console, see common.full_parse_jit_args().
+    """
     base_directory = os.path.dirname(__file__)
     directories = files.get_all_concat_directories(base_directory)
     files.remove_data_files(base_directory)
