@@ -4,6 +4,7 @@
 #include "llvm/ExecutionEngine/Orc/ExecutionUtils.h"
 #include "llvm/ExecutionEngine/Orc/ExecutorProcessControl.h"
 #include "llvm/ExecutionEngine/Orc/LLJIT.h"
+#include "llvm/ExecutionEngine/Orc/Mangling.h"
 #include "llvm/ExecutionEngine/Orc/Shared/ExecutorSymbolDef.h"
 #include "llvm/IR/DataLayout.h"
 #include "llvm/IR/LegacyPassManager.h"
@@ -16,38 +17,9 @@
 #include "JIT.h"
 #include "../util/Util.h"
 
-bool llvm::orc::JIT::UseOptimize;
-bool llvm::orc::JIT::UseReOptimize;
-std::string llvm::orc::JIT::Optimize;
-std::string llvm::orc::JIT::ReOptimize;
-
 void llvm::orc::JIT::handleLazyCallThroughError() {
     errs() << "LazyCallThrough error: Could not find function body";
     exit(1);
-}
-
-llvm::Expected<llvm::orc::ThreadSafeModule> llvm::orc::JIT::optimizeModule(ThreadSafeModule TSM, const MaterializationResponsibility &R) {
-    if (llvm::orc::JIT::UseOptimize)
-        TSM.withModuleDo([](Module &M) {
-            llvm::LoopAnalysisManager lam;
-            llvm::FunctionAnalysisManager fam;
-            llvm::CGSCCAnalysisManager cgam;
-            llvm::ModuleAnalysisManager mam;
-
-            llvm::PassBuilder pb;
-            pb.registerModuleAnalyses(mam);
-            pb.registerCGSCCAnalyses(cgam);
-            pb.registerFunctionAnalyses(fam);
-            pb.registerLoopAnalyses(lam);
-            pb.crossRegisterProxies(lam, fam, cgam, mam);
-
-            llvm::ModulePassManager mpm;
-            if (auto Err = pb.parsePassPipeline(mpm, llvm::StringRef(llvm::orc::JIT::Optimize)))
-                return;
-            mpm.run(M, mam);
-        });
-
-    return std::move(TSM);
 }
 
 llvm::orc::JIT::JIT(std::unique_ptr<llvm::orc::ExecutionSession> ES,
@@ -55,17 +27,18 @@ llvm::orc::JIT::JIT(std::unique_ptr<llvm::orc::ExecutionSession> ES,
          llvm::orc::JITTargetMachineBuilder JTMB,
          llvm::DataLayout DL,
          std::unique_ptr<llvm::orc::RedirectableSymbolManager> RSM,
-         std::unique_ptr<llvm::orc::ObjectLinkingLayer> OLayer,
-         llvm::orc::RequestModuleCallback RM)
+         std::unique_ptr<llvm::orc::ObjectLinkingLayer> OL,
+         llvm::orc::RequestModuleCallback RM,
+         std::string Optimize, std::string ReOptimize)
         : BaseJIT(std::move(RM)), ExecutionSession(std::move(ES)),
           EPCIU(std::move(EPCIU)), DataLayout(DL),
           Mangle(*this->ExecutionSession, this->DataLayout),
           MainJD(this->ExecutionSession->getJITDylibByName("main")),
-          ObjectLayer(std::move(OLayer)),
+          ObjectLayer(std::move(OL)),
           CompileLayer(
                   std::move(std::make_unique<llvm::orc::IRCompileLayer>(
                           *this->ExecutionSession, *this->ObjectLayer,
-                          std::make_unique<ConcurrentIRCompiler>(std::move(JTMB))
+                          cantFail(createCompiler(std::move(JTMB)))
                   ))
           ),
           CompileOnDemandLayer(
@@ -77,7 +50,7 @@ llvm::orc::JIT::JIT(std::unique_ptr<llvm::orc::ExecutionSession> ES,
           ),
           OptimizeLayer(
                   std::move(std::make_unique<llvm::orc::IRTransformLayer>(
-                          *this->ExecutionSession, *this->CompileOnDemandLayer, optimizeModule
+                          *this->ExecutionSession, *this->CompileOnDemandLayer, OptimizationTransform(std::move(Optimize))
                   ))
           ),
           ReOptimizeLayer(
@@ -108,26 +81,25 @@ llvm::orc::JIT::JIT(std::unique_ptr<llvm::orc::ExecutionSession> ES,
             [&](llvm::orc::ReOptimizeLayer &parent, llvm::orc::ReOptMaterializationUnitID MUID,
                 unsigned CurrentVersion, llvm::orc::ResourceTrackerSP OldResourceTracker,
                 llvm::orc::ThreadSafeModule &TSM) {
-                    if (llvm::orc::JIT::UseReOptimize)
-                        TSM.withModuleDo([](Module &M) {
-                            print_log_data("Recompiled", LogType::List, LogPart::BackEnd, "recompiled module " + std::string(M.getName()));
-                            llvm::LoopAnalysisManager lam;
-                            llvm::FunctionAnalysisManager fam;
-                            llvm::CGSCCAnalysisManager cgam;
-                            llvm::ModuleAnalysisManager mam;
+                    TSM.withModuleDo([&ReOptimize](Module &M) {
+                        print_log_data("Recompiled", LogType::List, LogPart::BackEnd, "recompiled module " + std::string(M.getName()));
+                        llvm::LoopAnalysisManager lam;
+                        llvm::FunctionAnalysisManager fam;
+                        llvm::CGSCCAnalysisManager cgam;
+                        llvm::ModuleAnalysisManager mam;
 
-                            llvm::PassBuilder pb;
-                            pb.registerModuleAnalyses(mam);
-                            pb.registerCGSCCAnalyses(cgam);
-                            pb.registerFunctionAnalyses(fam);
-                            pb.registerLoopAnalyses(lam);
-                            pb.crossRegisterProxies(lam, fam, cgam, mam);
+                        llvm::PassBuilder pb;
+                        pb.registerModuleAnalyses(mam);
+                        pb.registerCGSCCAnalyses(cgam);
+                        pb.registerFunctionAnalyses(fam);
+                        pb.registerLoopAnalyses(lam);
+                        pb.crossRegisterProxies(lam, fam, cgam, mam);
 
-                            llvm::ModulePassManager mpm;
-                            if (auto Err = pb.parsePassPipeline(mpm, llvm::StringRef(llvm::orc::JIT::ReOptimize)))
-                                return;
-                            mpm.run(M, mam);
-                        });
+                        llvm::ModulePassManager mpm;
+                        if (auto Err = pb.parsePassPipeline(mpm, llvm::StringRef(ReOptimize)))
+                            return;
+                        mpm.run(M, mam);
+                    });
                     return Error::success();
                 });
 }
@@ -139,21 +111,16 @@ llvm::orc::JIT::~JIT() {
         this->ExecutionSession->reportError(std::move(Err));
 }
 
-
 llvm::Expected<std::unique_ptr<llvm::orc::BaseJIT>> llvm::orc::JIT::create(llvm::orc::RequestModuleCallback AddModule, std::vector<std::string> Arguments) {
-    std::string optimize;
-    std::string reOptimize;
-    llvm::orc::JIT::UseOptimize = false;
-    llvm::orc::JIT::UseReOptimize = false;
+    std::string optimize = O1;
+    std::string reOptimize = O2;
     for (const auto& argument : Arguments) {
         auto splitArgument = split_once(argument, '=');
         if (splitArgument[0] == "-opt") {
-            llvm::orc::JIT::UseOptimize = true;
-            llvm::orc::JIT::Optimize = splitArgument[1];
+            optimize = splitArgument[1];
         }
         else if (splitArgument[0] == "-reopt") {
-            llvm::orc::JIT::UseReOptimize = true;
-            llvm::orc::JIT::ReOptimize = splitArgument[1];
+            reOptimize = splitArgument[1];
         }
     }
     auto epc = SelfExecutorProcessControl::Create();
@@ -175,10 +142,9 @@ llvm::Expected<std::unique_ptr<llvm::orc::BaseJIT>> llvm::orc::JIT::create(llvm:
     JITTargetMachineBuilder jtmb(
             es->getExecutorProcessControl().getTargetTriple());
 
-    auto DL = jtmb.getDefaultDataLayoutForTarget();
-    if (!DL)
-        return DL.takeError();
-
+    auto dl = jtmb.getDefaultDataLayoutForTarget();
+    if (!dl)
+        return dl.takeError();
 
     auto ol = std::make_unique<ObjectLinkingLayer>(
             *es, std::make_unique<jitlink::InProcessMemoryManager>(4096));
@@ -189,21 +155,9 @@ llvm::Expected<std::unique_ptr<llvm::orc::BaseJIT>> llvm::orc::JIT::create(llvm:
         return jlrsm.takeError();
 
     return std::make_unique<JIT>(std::move(es), std::move(*epciu),
-                                 std::move(jtmb), std::move(*DL), std::move(*jlrsm),
-                                 std::move(ol), std::move(AddModule));
-}
-
-llvm::Error llvm::orc::JIT::applyDataLayout(llvm::Module &Module) {
-    Module.setDataLayout(this->DataLayout);
-
-    if (Module.getDataLayout() != this->DataLayout)
-        return make_error<llvm::StringError>(
-                "Added modules have incompatible data layouts: " +
-                Module.getDataLayout().getStringRepresentation() + " (module) vs " +
-                this->DataLayout.getStringRepresentation() + " (jit)",
-                inconvertibleErrorCode());
-
-    return Error::success();
+                                 std::move(jtmb), std::move(*dl), std::move(*jlrsm),
+                                 std::move(ol), std::move(AddModule),
+                                 optimize, reOptimize);
 }
 
 llvm::Error llvm::orc::JIT::addModule(llvm::orc::ThreadSafeModule ThreadSafeModule) {
@@ -238,6 +192,22 @@ llvm::Error llvm::orc::JIT::addModule(llvm::orc::ThreadSafeModule ThreadSafeModu
     return this->ReOptimizeLayer->add(std::move(ResourceTracker), std::move(ThreadSafeModule));
 }
 
-llvm::Expected<llvm::orc::ExecutorSymbolDef> llvm::orc::JIT::lookup(llvm::StringRef Name) {
-    return this->ExecutionSession->lookup({this->MainJD}, this->Mangle(Name.str()));
+llvm::Expected<llvm::orc::ExecutorAddr> llvm::orc::JIT::lookup(llvm::StringRef Name) {
+    auto result = this->ExecutionSession->lookup({this->MainJD}, this->Mangle(Name.str()));
+    if (!result)
+        return result.takeError();
+    return result->getAddress();
+}
+
+llvm::Error llvm::orc::JIT::applyDataLayout(llvm::Module &Module) {
+    Module.setDataLayout(this->DataLayout);
+
+    if (Module.getDataLayout() != this->DataLayout)
+        return make_error<llvm::StringError>(
+                "Added modules have incompatible data layouts: " +
+                Module.getDataLayout().getStringRepresentation() + " (module) vs " +
+                this->DataLayout.getStringRepresentation() + " (jit)",
+                inconvertibleErrorCode());
+
+    return Error::success();
 }

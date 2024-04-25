@@ -20,6 +20,8 @@ def main(args: typing.Any):
     files.remove_data_files(base_directory)
     component = common.args_to_component(args)
     for directory in directories:
+        if not directory.endswith(args.f):
+            continue
         print("started " + directory)
         run_file = files.add_run_file(directory)
         if not os.path.isfile(run_file):

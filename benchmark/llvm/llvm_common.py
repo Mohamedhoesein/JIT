@@ -57,7 +57,7 @@ def compile(
         shutil.rmtree(reference_directory)
     if os.path.exists(jit_directory):
         shutil.rmtree(jit_directory)
-    for source in sources:
+    for source in sorted(sources):
         target = source.replace("/", "_").replace("\\", "_")
         full_source = os.path.join(source_directory, source)
         print(f"started compiling {source}")
@@ -157,7 +157,7 @@ def run(
             component,
             [classes.Args("None", "")],
             common.back_end_args(back_end),
-            default.default_front_end_data_extraction,
+            default.default_front_end_data_extraction(1),
             back_end_extraction,
             default.none_data_extraction,
             jit,

@@ -1,18 +1,19 @@
 #ifndef JIT_JIT_H
 #define JIT_JIT_H
 
-#include <memory>
-#include <exception>
-#include <vector>
-
-#include "../reOptimize/ReOptimizeLayer.h"
-#include "../reOptimize/JITLinkRedirectableSymbolManager.h"
-#include "BaseJIT.h"
 #include "llvm/ExecutionEngine/Orc/EPCIndirectionUtils.h"
 #include "llvm/ExecutionEngine/Orc/IRCompileLayer.h"
 #include "llvm/ExecutionEngine/Orc/CompileOnDemandLayer.h"
 #include "llvm/ExecutionEngine/Orc/IRTransformLayer.h"
 #include "llvm/ExecutionEngine/Orc/JITTargetMachineBuilder.h"
+#include "llvm/ExecutionEngine/Orc/Debugging/PerfSupportPlugin.h"
+#include <memory>
+#include <exception>
+#include <vector>
+
+#include "BaseJIT.h"
+#include "../reOptimize/ReOptimizeLayer.h"
+#include "../reOptimize/JITLinkRedirectableSymbolManager.h"
 
 namespace llvm {
     namespace orc {
@@ -32,19 +33,15 @@ namespace llvm {
             std::unique_ptr<llvm::orc::CompileOnDemandLayer> CompileOnDemandLayer;
             std::unique_ptr<llvm::orc::IRTransformLayer> OptimizeLayer;
             std::unique_ptr<llvm::orc::ReOptimizeLayer> ReOptimizeLayer;
+            std::unique_ptr<llvm::orc::PerfSupportPlugin> Plugin;
 
             StringMap<int> Internals;
             llvm::orc::JITDylib *MainJD;
             llvm::DataLayout DataLayout;
             llvm::orc::MangleAndInterner Mangle;
             std::set<std::string> GlobalVars;
-            static bool UseOptimize;
-            static bool UseReOptimize;
-            static std::string Optimize;
-            static std::string ReOptimize;
 
             static void handleLazyCallThroughError();
-            static Expected<ThreadSafeModule> optimizeModule(ThreadSafeModule ThreadSafeModule, const MaterializationResponsibility &R);
             Error applyDataLayout(Module &Module);
         public:
             /**
@@ -57,6 +54,8 @@ namespace llvm {
              * @param TSM The object to handle redirection for recompilation.
              * @param OL The object linking layer.
              * @param RM The callback used to request more information from the front-end.
+             * @param Optimize The string to use indicate the llvm passes to use when optimizing.
+             * @param ReOptimize The string to use indicate the llvm passes to use when re-optimizing.
              */
             JIT(std::unique_ptr<llvm::orc::ExecutionSession> ES,
                 std::unique_ptr<llvm::orc::EPCIndirectionUtils> EPCIU,
@@ -64,7 +63,8 @@ namespace llvm {
                 llvm::DataLayout DL,
                 std::unique_ptr<llvm::orc::RedirectableSymbolManager> TSM,
                 std::unique_ptr<llvm::orc::ObjectLinkingLayer> OL,
-                llvm::orc::RequestModuleCallback RM);
+                llvm::orc::RequestModuleCallback RM,
+                std::string Optimize, std::string ReOptimize);
             /**
              * The destructor to deallocate resource associated with the JIT.
              */
@@ -87,7 +87,7 @@ namespace llvm {
             /**
              * @copydoc llvm::orc::BaseJIT::lookup(llvm::StringRef)
              */
-            Expected<ExecutorSymbolDef> lookup(llvm::StringRef Name) override;
+            Expected<ExecutorAddr> lookup(llvm::StringRef Name) override;
         };
 
     } // end namespace orc

@@ -114,7 +114,9 @@ def back_end_parsing_map() -> dict:
     The map between different back-ends for the JIT and a function to extract data from it.
     :return: The map itself.
     """
-    mapping = {"simple": default.default_back_end_data_extraction}
+    mapping = {
+        "recomp": default.default_back_end_data_extraction(2)
+    }
     return mapping
 
 
@@ -124,7 +126,7 @@ def back_end_args_map() -> dict:
     :return: The map itself.
     """
     mapping = {
-        "simple": [
+        "recomp": [
             classes.Args(
                 "O1-O2",
                 "-opt=annotation2metadata,forceattrs,inferattrs,coro-early,function<eager-inv>(lower-expect,simplifycfg<bonus-inst-threshold=1;no-forward-switch-cond;no-switch-range-to-icmp;no-switch-to-lookup;keep-loops;no-hoist-common-insts;no-sink-common-insts;speculate-blocks;simplify-cond-branch>,sroa<modify-cfg>,early-cse<>),openmp-opt,ipsccp,called-value-propagation,globalopt,function<eager-inv>(mem2reg,instcombine<max-iterations=1000;no-use-loop-info>,simplifycfg<bonus-inst-threshold=1;no-forward-switch-cond;switch-range-to-icmp;no-switch-to-lookup;keep-loops;no-hoist-common-insts;no-sink-common-insts;speculate-blocks;simplify-cond-branch>),require<globals-aa>,function(invalidate<aa>),require<profile-summary>,cgscc(devirt<4>(inline<only-mandatory>,inline,function<eager-inv;no-rerun>(sroa<modify-cfg>,early-cse<memssa>,simplifycfg<bonus-inst-threshold=1;no-forward-switch-cond;switch-range-to-icmp;no-switch-to-lookup;keep-loops;no-hoist-common-insts;no-sink-common-insts;speculate-blocks;simplify-cond-branch>,instcombine<max-iterations=1000;no-use-loop-info>,libcalls-shrinkwrap,simplifycfg<bonus-inst-threshold=1;no-forward-switch-cond;switch-range-to-icmp;no-switch-to-lookup;keep-loops;no-hoist-common-insts;no-sink-common-insts;speculate-blocks;simplify-cond-branch>,reassociate,loop-mssa(loop-instsimplify,loop-simplifycfg,licm<no-allowspeculation>,loop-rotate<header-duplication;no-prepare-for-lto>,licm<allowspeculation>,simple-loop-unswitch<no-nontrivial;trivial>),simplifycfg<bonus-inst-threshold=1;no-forward-switch-cond;switch-range-to-icmp;no-switch-to-lookup;keep-loops;no-hoist-common-insts;no-sink-common-insts;speculate-blocks;simplify-cond-branch>,instcombine<max-iterations=1000;no-use-loop-info>,loop(loop-idiom,indvars,loop-deletion,loop-unroll-full),sroa<modify-cfg>,memcpyopt,sccp,bdce,instcombine<max-iterations=1000;no-use-loop-info>,coro-elide,adce,simplifycfg<bonus-inst-threshold=1;no-forward-switch-cond;switch-range-to-icmp;no-switch-to-lookup;keep-loops;no-hoist-common-insts;no-sink-common-insts;speculate-blocks;simplify-cond-branch>,instcombine<max-iterations=1000;no-use-loop-info>),function-attrs,function(require<should-not-run-function-passes>),coro-split)),deadargelim,coro-cleanup,globalopt,globaldce,elim-avail-extern,rpo-function-attrs,recompute-globalsaa,function<eager-inv>(float2int,lower-constant-intrinsics,loop(loop-rotate<header-duplication;no-prepare-for-lto>,loop-deletion),loop-distribute,inject-tli-mappings,loop-vectorize<no-interleave-forced-only;vectorize-forced-only;>,loop-load-elim,instcombine<max-iterations=1000;no-use-loop-info>,simplifycfg<bonus-inst-threshold=1;forward-switch-cond;switch-range-to-icmp;switch-to-lookup;no-keep-loops;hoist-common-insts;sink-common-insts;speculate-blocks;simplify-cond-branch>,vector-combine,instcombine<max-iterations=1000;no-use-loop-info>,loop-unroll<O1>,transform-warning,sroa<preserve-cfg>,instcombine<max-iterations=1000;no-use-loop-info>,loop-mssa(licm<allowspeculation>),alignment-from-assumptions,loop-sink,instsimplify,div-rem-pairs,tailcallelim,simplifycfg<bonus-inst-threshold=1;no-forward-switch-cond;switch-range-to-icmp;no-switch-to-lookup;keep-loops;no-hoist-common-insts;no-sink-common-insts;speculate-blocks;simplify-cond-branch>),globaldce,constmerge,cg-profile,rel-lookup-table-converter,function(annotation-remarks),verify " +
@@ -208,7 +210,7 @@ def run(
     if component_data.for_reference():
         files.recreate_file([benchmark_reference, other_reference])
         reference_directories = files.get_all_directories(files.get_reference_directory(path))
-        for reference_directory in reference_directories:
+        for reference_directory in sorted(reference_directories):
             print(f"started running {reference_directory}")
             full_reference_directory = os.path.join(files.get_reference_directory(path), reference_directory)
             reference = component_data.reference_command(full_reference_directory)
@@ -230,11 +232,11 @@ def run(
     if component_data.for_jit():
         files.recreate_file([benchmark_jit, other_jit])
         jit_directories = files.get_all_directories(files.get_jit_directory(path))
-        for jit_directory in jit_directories:
+        for jit_directory in sorted(jit_directories):
             print(f"started running {jit_directory}")
             full_jit_directory = os.path.join(files.get_jit_directory(path), jit_directory)
             sources = component_data.jit_files(full_jit_directory)
-            jit_args = [jit_directory] + arguments(full_jit_directory)
+            jit_args = list(filter(lambda arg: arg != "", [jit_directory] + arguments(full_jit_directory)))
             for f in component_data.front_end_args:
                 print(f"started running front-end args {f.name}")
                 for b in component_data.back_end_args:
@@ -243,13 +245,14 @@ def run(
                         run_command(
                             (prefix if prefix.endswith("/") else prefix + "/") + jit_directory + " " + b.name,
                             benchmark_jit,
-                            [component_data.jit, "-i", ",".join(sources), "-a", " ".join(jit_args), "-b", b.args] +
+                            [component_data.jit, "-i", ",".join(sources), "-a", " ".join(jit_args)] +
+                            (["-b", b.args] if b.args != "" else [])+
                             (["-r", f.args] if f.args != "" else []),
                             i == 0,
                             i == 4,
                             jit_other_data_extraction(component_data.front_end_extraction, component_data.back_end_extraction),
                             other_jit,
-                            f"front-end {f.name}:{f.args},back-end {b.name}:{b.args}"
+                            f"\"front-end {f.name}:{f.args}\",\"back-end {b.name}:{b.args}\""
                         )
                     print(f"finished running back-end args {b.name}")
                 print(f"finished running front-end args {f.name}")

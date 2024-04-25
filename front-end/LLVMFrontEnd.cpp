@@ -28,6 +28,6 @@ llvm::Expected<int> LLVMFrontEnd::start(int argc, char **argv) {
     if (!mainSymbol)
         return mainSymbol.takeError();
 
-    auto main = mainSymbol->getAddress().toPtr<int(*)(int,char**)>();
+    auto main = mainSymbol->toPtr<int(*)(int,char**)>();
     return main(argc, argv);
 }

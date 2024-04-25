@@ -2,15 +2,16 @@ cmake_minimum_required(VERSION 3.20)
 project(jit)
 
 # Set variables needed for compilation
-set(CMAKE_DEBUG_POSTFIX d)
 set(CMAKE_PREFIX_PATH "./lib/llvm")
 set(NO_RTTI "-fno-rtti")
 set(LLVM_ENABLE_ASSERTIONS ON)
 add_compile_options(${NO_RTTI})
 SET(FRONTEND "LLVM_FRONT_END")
 add_compile_definitions(${FRONTEND})
-set(JIT "SIMPLE_JIT_BACK_END")
+set(JIT "REOPT_JIT_BACK_END")
 add_compile_definitions(${JIT})
+set(COMPILER "LOG_COMPILER")
+add_compile_definitions(${COMPILER})
 
 # Look for LLVM, and set the definitions
 find_package(LLVM REQUIRED CONFIG)
@@ -46,7 +47,7 @@ add_executable(jit main.cpp
         front-end/LLVMFrontEnd.h)
 
 # Find the libraries that correspond to the LLVM components
-llvm_map_components_to_libnames(LLVM_LIBRARIES Core orcjit native Support)
+llvm_map_components_to_libnames(LLVM_LIBRARIES Core IRReader JITLink OrcJIT Support native)
 
 # Link against LLVM libraries
 target_include_directories(jit PRIVATE ${LLVM_INCLUDE_DIRS})

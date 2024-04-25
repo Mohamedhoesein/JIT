@@ -3,6 +3,7 @@ This module contains different default callbacks that are shared between multipl
 """
 
 import subprocess
+import typing
 from itertools import groupby
 
 from . import classes
@@ -38,12 +39,13 @@ def none_data_extraction(result: subprocess.CompletedProcess[bytes]) -> [str]:
     return []
 
 
-def base_data_extraction(result: subprocess.CompletedProcess[bytes], part: classes.LogPart) -> [str]:
+def base_data_extraction(result: subprocess.CompletedProcess[bytes], part: classes.LogPart, expected_columns: int) -> [str]:
     """
     The default data extraction from the JIT, "[DATA,time,type,part,tag] data", with data being the data to process. The
     rest is described in classes.Data.
     :param result: The result from the subprocess finished.
     :param part: If it is for the front-end or back-end.
+    :param expected_columns: How many columns there should be, will only be used if padding is needed.
     :return: The results for each tag.
     """
     lines = result.stdout.splitlines()
@@ -80,22 +82,25 @@ def base_data_extraction(result: subprocess.CompletedProcess[bytes], part: class
 
     for k in sorted(mapped.keys()):
         result.append(f"{k}: {mapped[k]}")
+
+    while len(result) < expected_columns:
+        result.append("")
     return result
 
 
-def default_back_end_data_extraction(result: subprocess.CompletedProcess[bytes]) -> [str]:
+def default_back_end_data_extraction(expected_columns: int) -> typing.Callable[[subprocess.CompletedProcess[bytes]], typing.List[str]]:
     """
     The default data extraction from the JIT back-end.
-    :param result: The result from the subprocess finished.
+    :param expected_columns: How many columns there should be, will only be used if padding is needed.
     :return: The results for each tag.
     """
-    return base_data_extraction(result, classes.LogPart.BackEnd)
+    return lambda result: base_data_extraction(result, classes.LogPart.BackEnd, expected_columns)
 
 
-def default_front_end_data_extraction(result: subprocess.CompletedProcess[bytes]) -> [str]:
+def default_front_end_data_extraction(expected_columns: int) -> typing.Callable[[subprocess.CompletedProcess[bytes]], typing.List[str]]:
     """
     The default data extraction from the JIT front-end.
-    :param result: The result from the subprocess finished.
+    :param expected_columns: How many columns there should be, will only be used if padding is needed.
     :return: The results for each tag.
     """
-    return base_data_extraction(result, classes.LogPart.FrontEnd)
+    return lambda result: base_data_extraction(result, classes.LogPart.FrontEnd, expected_columns)

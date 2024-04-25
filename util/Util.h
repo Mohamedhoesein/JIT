@@ -1,11 +1,25 @@
 #ifndef JIT_UTIL_H
 #define JIT_UTIL_H
 
+#include "llvm/ADT/FunctionExtras.h"
+#include "llvm/Analysis/CGSCCPassManager.h"
+#include "llvm/Analysis/LoopAnalysisManager.h"
+#include "llvm/ExecutionEngine/Orc/Core.h"
+#include "llvm/ExecutionEngine/Orc/EPCIndirectionUtils.h"
+#include "llvm/ExecutionEngine/Orc/LLJIT.h"
+#include "llvm/ExecutionEngine/Orc/RTDyldObjectLinkingLayer.h"
+#include "llvm/ExecutionEngine/SectionMemoryManager.h"
+#include "llvm/IR/LegacyPassManager.h"
+#include "llvm/Pass.h"
+#include "llvm/Passes/PassBuilder.h"
+#include "llvm/TargetParser/Triple.h"
+#include "llvm/Transforms/Scalar.h"
 #include <ctime>
 #include <iostream>
 #include <string>
+#include <utility>
 #include <vector>
-#include "llvm/IR/Module.h"
+#include <chrono>
 
 
 #define PRINT_ERROR(condition, message) PRINT_ERROR_FULL(condition, {}, message)
@@ -20,6 +34,9 @@
         exit(-1);                                              \
     }                                                          \
 }
+
+extern std::string O1;
+extern std::string O2;
 
 /**
  * A struct wrapping the arguments to the application.
@@ -113,5 +130,83 @@ std::unique_ptr<llvm::Module> load_module(llvm::StringRef file, llvm::LLVMContex
  * @return If the string ends in some substring.
  */
 bool hasEnding(std::string const &fullString, std::string const &ending);
+
+/**
+ * Create an ir compiler.
+ * @param JTMB The target machine builder.
+ * @param ObjCache The cache for objects.
+ * @return The ir compiler.
+ */
+llvm::Expected<std::unique_ptr<llvm::orc::IRCompileLayer::IRCompiler>> createCompiler(llvm::orc::JITTargetMachineBuilder JTMB, llvm::ObjectCache *ObjCache = nullptr);
+
+/**
+ * A class to handle the the optimisations via a pass pipeline.
+ */
+class OptimizationTransform {
+private:
+    std::string Optimize;
+public:
+    /**
+     * The constructor for the optimisations.
+     * @param Optimize The pass pipeline.
+     */
+    explicit OptimizationTransform(std::string Optimize) : Optimize(std::move(Optimize)) {}
+
+    /**
+     * The function to call when optimising.
+     * @param TSM The module to optimise.
+     * @param R The materialization handling.
+     * @return The optimised module.
+     */
+    llvm::Expected<llvm::orc::ThreadSafeModule> operator()(llvm::orc::ThreadSafeModule TSM,
+                                                           const llvm::orc::MaterializationResponsibility &R) {
+        TSM.withModuleDo([this](llvm::Module &M) {
+            llvm::LoopAnalysisManager lam;
+            llvm::FunctionAnalysisManager fam;
+            llvm::CGSCCAnalysisManager cgam;
+            llvm::ModuleAnalysisManager mam;
+
+            llvm::PassBuilder pb;
+            pb.registerModuleAnalyses(mam);
+            pb.registerCGSCCAnalyses(cgam);
+            pb.registerFunctionAnalyses(fam);
+            pb.registerLoopAnalyses(lam);
+            pb.crossRegisterProxies(lam, fam, cgam, mam);
+
+            llvm::ModulePassManager mpm;
+            llvm::cantFail(pb.parsePassPipeline(mpm, llvm::StringRef(Optimize)));
+            mpm.run(M, mam);
+        });
+        return std::move(TSM);
+    }
+};
+
+/**
+ * A ir compiler to include time spend compiling.
+ */
+class LogCompiler : public llvm::orc::ConcurrentIRCompiler {
+public:
+    /**
+     * The constructor for the compiler.
+     * @param JTMB The target machine builder.
+     * @param ObjCache The cache for objects.
+     */
+    explicit LogCompiler(llvm::orc::JITTargetMachineBuilder JTMB, llvm::ObjectCache *ObjCache = nullptr)
+            : llvm::orc::ConcurrentIRCompiler(JTMB, ObjCache) {}
+
+    /**
+     * Compile a module.
+     * @param M The module to compile.
+     * @return The compiled module.
+     */
+    llvm::Expected<std::unique_ptr<llvm::MemoryBuffer>> operator()(llvm::Module &M) override {
+        auto start = std::chrono::high_resolution_clock::now();
+        auto r = llvm::orc::ConcurrentIRCompiler::operator()(M);
+        auto end = std::chrono::high_resolution_clock::now();
+        auto elapsed = std::chrono::duration<double,std::milli>(end-start).count();
+        print_log_data("Compile", LogType::List, LogPart::BackEnd, M.getModuleIdentifier() + std::to_string(elapsed));
+        return r;
+    }
+};
 
 #endif //JIT_UTIL_H

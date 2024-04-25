@@ -20,7 +20,7 @@ def main(args: typing.Any):
     directories = files.get_all_concat_directories(base_directory)
     files.remove_data_files(base_directory)
     component = common.args_to_component(args)
-    for directory in directories:
+    for directory in sorted(directories):
         print("started " + directory)
         compile_file = llvm_common.add_compile_file(directory)
         run_file = files.add_run_file(directory)
