@@ -14,6 +14,14 @@ from .. import default
 from .. import files
 
 
+def compiler() -> str:
+    """
+    Return the compiler as it can be used in the command line to use when compiling the source code.
+    :return: The compiler to use.
+    """
+    return "clang-17"
+
+
 def get_llvm_prefix() -> str:
     """
     Return the prefix used for the names of tests in the csv file.
@@ -68,7 +76,7 @@ def compile(
             os.makedirs(full_reference_target)
             os.chdir(full_reference_target)
             subprocess.run(
-                ["clang-17", "-O3", "-lm"]
+                [compiler(), "-O3", "-lm"]
                 + list(map(lambda x: "-I" + x, includes))
                 + source_files
             )
@@ -77,7 +85,7 @@ def compile(
             os.makedirs(full_jit_target)
             os.chdir(full_jit_target)
             subprocess.run(
-                ["clang-17", "-S", "-emit-llvm", "-O", "-Xclang", "-disable-llvm-passes"]
+                [compiler(), "-S", "-emit-llvm", "-O", "-Xclang", "-disable-llvm-passes"]
                 + list(map(lambda x: "-I" + x, includes))
                 + source_files
             )

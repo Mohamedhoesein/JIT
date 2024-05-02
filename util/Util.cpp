@@ -102,11 +102,9 @@ bool hasEnding(std::string const &fullString, std::string const &ending) {
 }
 
 llvm::Expected<std::unique_ptr<llvm::orc::IRCompileLayer::IRCompiler>> createCompiler(llvm::orc::JITTargetMachineBuilder JTMB, llvm::ObjectCache *ObjCache) {
-#ifdef LOG_COMPILER
+#ifdef LOG
     return std::make_unique<LogCompiler>(std::move(JTMB), ObjCache);
-#elif defined CONCURRENT_COMPILER
-    return std::make_unique<llvm::orc::ConcurrentIRCompiler>(std::move(JTMB), ObjCache);
 #else
-    return llvm::createStringError(std::error_code(), "No compiler selected.");
+    return std::make_unique<llvm::orc::ConcurrentIRCompiler>(std::move(JTMB), ObjCache);
 #endif
 }

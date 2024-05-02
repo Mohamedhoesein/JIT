@@ -9,13 +9,47 @@
 #include "llvm/IR/DataLayout.h"
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/IR/Module.h"
-#include "llvm/IR/PassManager.h"
-#include "llvm/Passes/PassBuilder.h"
 #include "llvm/Transforms/Scalar.h"
 #include <utility>
 
 #include "JIT.h"
-#include "../util/Util.h"
+
+llvm::Expected<llvm::orc::ThreadSafeModule> llvm::orc::OptimizationTransform::operator()(llvm::orc::ThreadSafeModule TSM,
+                                                       const llvm::orc::MaterializationResponsibility &R) {
+    auto result = this->operator()(TSM);
+    if (!result)
+        return result.takeError();
+    return std::move(*result);
+}
+
+llvm::Expected<llvm::orc::ThreadSafeModule&> llvm::orc::OptimizationTransform::operator()(llvm::orc::ThreadSafeModule &TSM) {
+    TSM.withModuleDo([this](llvm::Module &M) {
+        llvm::LoopAnalysisManager lam;
+        llvm::FunctionAnalysisManager fam;
+        llvm::CGSCCAnalysisManager cgam;
+        llvm::ModuleAnalysisManager mam;
+
+        llvm::PassBuilder pb;
+        pb.registerModuleAnalyses(mam);
+        pb.registerCGSCCAnalyses(cgam);
+        pb.registerFunctionAnalyses(fam);
+        pb.registerLoopAnalyses(lam);
+        pb.crossRegisterProxies(lam, fam, cgam, mam);
+
+        llvm::ModulePassManager mpm;
+        llvm::cantFail(pb.parsePassPipeline(mpm, llvm::StringRef(Optimize)));
+#ifdef LOG
+        auto start = std::chrono::high_resolution_clock::now();
+#endif
+        mpm.run(M, mam);
+#ifdef LOG
+        auto end = std::chrono::high_resolution_clock::now();
+        auto elapsed = std::chrono::duration<double,std::milli>(end-start).count();
+        print_log_data(this->Tag, LogType::List, LogPart::BackEnd, M.getModuleIdentifier() + " " + std::to_string(elapsed));
+#endif
+    });
+    return TSM;
+}
 
 void llvm::orc::JIT::handleLazyCallThroughError() {
     errs() << "LazyCallThrough error: Could not find function body";
@@ -50,14 +84,15 @@ llvm::orc::JIT::JIT(std::unique_ptr<llvm::orc::ExecutionSession> ES,
           ),
           OptimizeLayer(
                   std::move(std::make_unique<llvm::orc::IRTransformLayer>(
-                          *this->ExecutionSession, *this->CompileOnDemandLayer, OptimizationTransform(std::move(Optimize))
+                          *this->ExecutionSession, *this->CompileOnDemandLayer, OptimizationTransform(std::move(Optimize), "Opt")
                   ))
           ),
           ReOptimizeLayer(
                   std::move(std::make_unique<llvm::orc::ReOptimizeLayer>(
                           *this->ExecutionSession, *this->OptimizeLayer, std::move(RSM)
                   ))
-          ) {
+          ),
+          ReOptimizationTransform(std::move(ReOptimize), "ReOpt") {
     this->MainJD->addGenerator(
             cantFail(
                     DynamicLibrarySearchGenerator::GetForCurrentProcess(DL.getGlobalPrefix())
@@ -81,25 +116,7 @@ llvm::orc::JIT::JIT(std::unique_ptr<llvm::orc::ExecutionSession> ES,
             [&](llvm::orc::ReOptimizeLayer &parent, llvm::orc::ReOptMaterializationUnitID MUID,
                 unsigned CurrentVersion, llvm::orc::ResourceTrackerSP OldResourceTracker,
                 llvm::orc::ThreadSafeModule &TSM) {
-                    TSM.withModuleDo([&ReOptimize](Module &M) {
-                        print_log_data("Recompiled", LogType::List, LogPart::BackEnd, "recompiled module " + std::string(M.getName()));
-                        llvm::LoopAnalysisManager lam;
-                        llvm::FunctionAnalysisManager fam;
-                        llvm::CGSCCAnalysisManager cgam;
-                        llvm::ModuleAnalysisManager mam;
-
-                        llvm::PassBuilder pb;
-                        pb.registerModuleAnalyses(mam);
-                        pb.registerCGSCCAnalyses(cgam);
-                        pb.registerFunctionAnalyses(fam);
-                        pb.registerLoopAnalyses(lam);
-                        pb.crossRegisterProxies(lam, fam, cgam, mam);
-
-                        llvm::ModulePassManager mpm;
-                        if (auto Err = pb.parsePassPipeline(mpm, llvm::StringRef(ReOptimize)))
-                            return;
-                        mpm.run(M, mam);
-                    });
+                    this->ReOptimizationTransform(TSM);
                     return Error::success();
                 });
 }

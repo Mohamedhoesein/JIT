@@ -14,9 +14,43 @@
 #include "BaseJIT.h"
 #include "../reOptimize/ReOptimizeLayer.h"
 #include "../reOptimize/JITLinkRedirectableSymbolManager.h"
+#include "../util/Util.h"
 
 namespace llvm {
     namespace orc {
+        /**
+         * A class to handle the the optimisations via a pass pipeline.
+         */
+        class OptimizationTransform {
+        private:
+            std::string Optimize;
+            std::string Tag;
+        public:
+            /**
+             * The constructor for the optimisations.
+             * @param Optimize The pass pipeline.
+             * @param Tag The tag to use when logging.
+             */
+            explicit OptimizationTransform(std::string Optimize, std::string Tag)
+                : Optimize(std::move(Optimize)), Tag(std::move(Tag)) {}
+
+            /**
+             * The function to call when optimising.
+             * @param TSM The module to optimise.
+             * @param R The materialization handling.
+             * @return The optimised module.
+             */
+            llvm::Expected<llvm::orc::ThreadSafeModule> operator()(llvm::orc::ThreadSafeModule TSM,
+                                                                   const llvm::orc::MaterializationResponsibility &R);
+
+            /**
+             * The function to call when optimising.
+             * @param TSM The module to optimise.
+             * @return The optimised module.
+             */
+            llvm::Expected<llvm::orc::ThreadSafeModule&> operator()(llvm::orc::ThreadSafeModule &TSM);
+        };
+
         /**
          * A simple JIT setup, with optimisation and a single reoptimisation step.
          */
@@ -40,6 +74,7 @@ namespace llvm {
             llvm::DataLayout DataLayout;
             llvm::orc::MangleAndInterner Mangle;
             std::set<std::string> GlobalVars;
+            OptimizationTransform ReOptimizationTransform;
 
             static void handleLazyCallThroughError();
             Error applyDataLayout(Module &Module);

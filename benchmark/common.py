@@ -115,7 +115,7 @@ def back_end_parsing_map() -> dict:
     :return: The map itself.
     """
     mapping = {
-        "recomp": default.default_back_end_data_extraction(2)
+        "recomp": default.default_back_end_data_extraction(3)
     }
     return mapping
 

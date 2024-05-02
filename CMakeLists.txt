@@ -10,8 +10,8 @@ SET(FRONTEND "LLVM_FRONT_END")
 add_compile_definitions(${FRONTEND})
 set(JIT "REOPT_JIT_BACK_END")
 add_compile_definitions(${JIT})
-set(COMPILER "LOG_COMPILER")
-add_compile_definitions(${COMPILER})
+set(LOG "LOG")
+add_compile_definitions(${LOG})
 
 # Look for LLVM, and set the definitions
 find_package(LLVM REQUIRED CONFIG)

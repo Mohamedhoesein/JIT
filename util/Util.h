@@ -140,48 +140,6 @@ bool hasEnding(std::string const &fullString, std::string const &ending);
 llvm::Expected<std::unique_ptr<llvm::orc::IRCompileLayer::IRCompiler>> createCompiler(llvm::orc::JITTargetMachineBuilder JTMB, llvm::ObjectCache *ObjCache = nullptr);
 
 /**
- * A class to handle the the optimisations via a pass pipeline.
- */
-class OptimizationTransform {
-private:
-    std::string Optimize;
-public:
-    /**
-     * The constructor for the optimisations.
-     * @param Optimize The pass pipeline.
-     */
-    explicit OptimizationTransform(std::string Optimize) : Optimize(std::move(Optimize)) {}
-
-    /**
-     * The function to call when optimising.
-     * @param TSM The module to optimise.
-     * @param R The materialization handling.
-     * @return The optimised module.
-     */
-    llvm::Expected<llvm::orc::ThreadSafeModule> operator()(llvm::orc::ThreadSafeModule TSM,
-                                                           const llvm::orc::MaterializationResponsibility &R) {
-        TSM.withModuleDo([this](llvm::Module &M) {
-            llvm::LoopAnalysisManager lam;
-            llvm::FunctionAnalysisManager fam;
-            llvm::CGSCCAnalysisManager cgam;
-            llvm::ModuleAnalysisManager mam;
-
-            llvm::PassBuilder pb;
-            pb.registerModuleAnalyses(mam);
-            pb.registerCGSCCAnalyses(cgam);
-            pb.registerFunctionAnalyses(fam);
-            pb.registerLoopAnalyses(lam);
-            pb.crossRegisterProxies(lam, fam, cgam, mam);
-
-            llvm::ModulePassManager mpm;
-            llvm::cantFail(pb.parsePassPipeline(mpm, llvm::StringRef(Optimize)));
-            mpm.run(M, mam);
-        });
-        return std::move(TSM);
-    }
-};
-
-/**
  * A ir compiler to include time spend compiling.
  */
 class LogCompiler : public llvm::orc::ConcurrentIRCompiler {

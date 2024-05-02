@@ -20,8 +20,9 @@ def main(args: typing.Any):
     benchmarks = files.get_all_directories(source_directory)
     sources = []
     for benchmark in benchmarks:
-        temp_sources = files.get_all_directories(os.path.join(source_directory, benchmark))
-        sources += list(map(lambda x: os.path.join(benchmark, x), temp_sources))
+        if not benchmark.endswith("doc"):
+            temp_sources = files.get_all_directories(os.path.join(source_directory, benchmark))
+            sources += list(map(lambda x: os.path.join(benchmark, x), temp_sources))
     llvm_common.compile(
         sources,
         base_directory,
