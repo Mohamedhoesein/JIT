@@ -9,4 +9,4 @@ while getopts "c:j:" flag; do
     esac
 done
 
-./$script_dir/lib/install.sh $compile $jobs
+$script_dir/lib/install.sh $compile $jobs
