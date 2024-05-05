@@ -104,3 +104,12 @@ def default_front_end_data_extraction(expected_columns: int) -> typing.Callable[
     :return: The results for each tag.
     """
     return lambda result: base_data_extraction(result, classes.LogPart.FrontEnd, expected_columns)
+
+
+def default_whole_data_extraction(result: subprocess.CompletedProcess[bytes]) -> typing.List[str]:
+    """
+    The default data extraction from the whole.
+    :param result: The result from the subprocess finished.
+    :return: The results for each tag.
+    """
+    return base_data_extraction(result, classes.LogPart.Whole, 2)

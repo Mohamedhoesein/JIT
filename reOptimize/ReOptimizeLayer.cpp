@@ -4,6 +4,8 @@
 using namespace llvm;
 using namespace orc;
 
+uint64_t ReOptimizeLayer::CallCountThreshold = 1000;
+
 bool ReOptimizeLayer::ReOptMaterializationUnitState::tryStartReoptimize() {
     std::unique_lock<std::mutex> Lock(Mutex);
     if (Reoptimizing)

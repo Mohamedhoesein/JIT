@@ -28,7 +28,7 @@ namespace llvm {
         class ReOptimizeLayer : public IRLayer, public ResourceManager {
         public:
             /// Threshold for recompilation
-            static const uint64_t CallCountThreshold = 1000;
+            static uint64_t CallCountThreshold;
 
             /// AddProfilerFunc will be called when ReOptimizeLayer emits the first
             /// version of a materialization unit in order to inject profiling code and

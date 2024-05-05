@@ -1,4 +1,3 @@
-#include "llvm/Support/SourceMgr.h"
 #include "llvm/Support/TargetSelect.h"
 #include <filesystem>
 
@@ -8,6 +7,12 @@
 #include "util/Util.h"
 
 int main(int argc, char **argv) {
+#ifdef LOG
+    std::chrono::time_point<std::chrono::system_clock> now = std::chrono::system_clock::now();
+    auto duration = now.time_since_epoch();
+    auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+    print_log_data("Start", LogType::List, LogPart::Whole, std::to_string(millis));
+#endif
     llvm::InitializeNativeTarget();
     llvm::InitializeNativeTargetAsmPrinter();
 

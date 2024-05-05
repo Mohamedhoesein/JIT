@@ -6,7 +6,6 @@
 #include "llvm/ExecutionEngine/Orc/CompileOnDemandLayer.h"
 #include "llvm/ExecutionEngine/Orc/IRTransformLayer.h"
 #include "llvm/ExecutionEngine/Orc/JITTargetMachineBuilder.h"
-#include "llvm/ExecutionEngine/Orc/Debugging/PerfSupportPlugin.h"
 #include <memory>
 #include <exception>
 #include <vector>
@@ -66,8 +65,7 @@ namespace llvm {
             // we need to reimplement to have some shared logic between multiple instances.
             std::unique_ptr<llvm::orc::CompileOnDemandLayer> CompileOnDemandLayer;
             std::unique_ptr<llvm::orc::IRTransformLayer> OptimizeLayer;
-            std::unique_ptr<llvm::orc::ReOptimizeLayer> ReOptimizeLayer;
-            std::unique_ptr<llvm::orc::PerfSupportPlugin> Plugin;
+            std::unique_ptr<llvm::orc::ReOptimizeLayer> ReOptLayer;
 
             StringMap<int> Internals;
             llvm::orc::JITDylib *MainJD;
@@ -75,6 +73,7 @@ namespace llvm {
             llvm::orc::MangleAndInterner Mangle;
             std::set<std::string> GlobalVars;
             OptimizationTransform ReOptimizationTransform;
+            std::string EntryPoint = "";
 
             static void handleLazyCallThroughError();
             Error applyDataLayout(Module &Module);
@@ -123,6 +122,10 @@ namespace llvm {
              * @copydoc llvm::orc::BaseJIT::lookup(llvm::StringRef)
              */
             Expected<ExecutorAddr> lookup(llvm::StringRef Name) override;
+            /**
+             * @copydoc llvm::orc::BaseJIT::entryPoint(llvm::StringRef)
+             */
+            llvm::Error entryPoint(llvm::StringRef Name) override;
         };
 
     } // end namespace orc

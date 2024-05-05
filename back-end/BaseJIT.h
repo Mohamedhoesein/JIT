@@ -74,6 +74,12 @@ namespace llvm {
              * @return An object with either the symbol or an error depending on if the lookup was successful.
              */
             virtual llvm::Expected<llvm::orc::ExecutorAddr> lookup(llvm::StringRef Name) = 0;
+            /**
+             * Specify the entry point so that a log can be added with the timestamp of when it was called.
+             * @param Name
+             * @return
+             */
+            virtual llvm::Error entryPoint(llvm::StringRef Name) = 0;
         };
     }
 }

@@ -31,6 +31,20 @@ def add_quote(string: str) -> str:
     return string
 
 
+def get_time(err: bytes) -> int:
+    lines = err.decode().splitlines()
+    for line in lines:
+        parts = line.split(" ")
+        for part in parts:
+            if part.endswith("elapsed"):
+                time = part.removesuffix("elapsed")
+                first_split = time.split(":")
+                minutes = int(first_split[0])
+                second_split = first_split[1].split(".")
+                seconds = minutes * 60 + int(second_split[0])
+                return seconds * 10000 + int(second_split[1])
+
+
 def run_command(
         name: str,
         time_data_file: str,
@@ -53,21 +67,25 @@ def run_command(
     :param other_data_file: The name of the file where the extra data should be put.
     :param extra: Any extra information to place in the csv file.
     """
+    commands = " ".join(command)
     process = subprocess.run(
         [
-            "/usr/bin/time",
-            "-q", "-a", "-o" + time_data_file,
-                        "-f" + (
-                            (
-                                f"\"{name}\"" +
-                                (f",{extra}," if extra != "" and extra is not None else ",")
-                            ) if first else ""
-                        ) +
-                        "\"%e\",\"%K\",\"%x\"" + ("\n" if last else ",")
-        ] + command,
+            f"time {commands}"
+        ],
         stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE
+        stderr=subprocess.PIPE,
+        shell=True
     )
+    time = get_time(process.stderr)
+    return_code = process.returncode
+    line = (
+        (
+                f"\"{name}\"" +
+                (f",{extra}," if extra != "" and extra is not None else ",")
+        ) if first else ""
+    ) + f"\"{time}\",\"{return_code}\"" + ("\n" if last else ",")
+    with open(time_data_file, "a") as f:
+        f.write(line)
     other_data = other_data_extraction(process)
     other_data = list(map(lambda x: "\"" + x + "\"", other_data))
     if first:
@@ -105,8 +123,8 @@ def clean_benchmark_csv(file: str) -> None:
     line. Then any empty lines between different runs will also be removed.
     :param file: The file to clean.
     """
-    files.search_and_replace(file, "\n\"", "\"")
-    files.search_and_replace(file, "\n\n", "\n")
+    #files.search_and_replace(file, "\n\"", "\"")
+    #files.search_and_replace(file, "\n\n", "\n")
 
 
 def back_end_parsing_map() -> dict:
@@ -122,7 +140,7 @@ def back_end_parsing_map() -> dict:
 
 def back_end_args_map() -> dict:
     """
-    The map between different back-ends for the JIT and the different standard arguments..
+    The map between different back-ends for the JIT and the different standard arguments.
     :return: The map itself.
     """
     mapping = {
@@ -185,7 +203,7 @@ def jit_other_data_extraction(
     :param back_end: The callback for the back-end.
     :return: A callback that will call the callback for the front-end followed by the callback for the back-end.
     """
-    return lambda a: front_end(a) + back_end(a)
+    return lambda a: front_end(a) + default.default_whole_data_extraction(a) + back_end(a)
 
 
 def run(
@@ -245,9 +263,9 @@ def run(
                         run_command(
                             (prefix if prefix.endswith("/") else prefix + "/") + jit_directory + " " + b.name,
                             benchmark_jit,
-                            [component_data.jit, "-i", ",".join(sources), "-a", " ".join(jit_args)] +
-                            (["-b", b.args] if b.args != "" else [])+
-                            (["-r", f.args] if f.args != "" else []),
+                            [component_data.jit, "-i", "\"" + ",".join(sources) + "\"", "-a", "\"" + " ".join(jit_args) + "\""] +
+                            (["-b", f"\"{b.args}\""] if b.args != "" else []) +
+                            (["-r", f"\"{b.args}\""] if f.args != "" else []),
                             i == 0,
                             i == 4,
                             jit_other_data_extraction(component_data.front_end_extraction, component_data.back_end_extraction),

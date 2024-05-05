@@ -67,6 +67,10 @@ class LogPart(Enum):
     """
     If it is for the back-end.
     """
+    Whole = 3
+    """
+    If it is for the whole jit.
+    """
 
     @staticmethod
     def from_string(name: str):
@@ -79,6 +83,8 @@ class LogPart(Enum):
             return LogPart.FrontEnd
         elif name == "BACK-END":
             return LogPart.BackEnd
+        elif name == "WHOLE":
+            return LogPart.Whole
 
 
 class Component(Enum):

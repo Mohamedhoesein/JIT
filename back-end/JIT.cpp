@@ -87,7 +87,7 @@ llvm::orc::JIT::JIT(std::unique_ptr<llvm::orc::ExecutionSession> ES,
                           *this->ExecutionSession, *this->CompileOnDemandLayer, OptimizationTransform(std::move(Optimize), "Opt")
                   ))
           ),
-          ReOptimizeLayer(
+          ReOptLayer(
                   std::move(std::make_unique<llvm::orc::ReOptimizeLayer>(
                           *this->ExecutionSession, *this->OptimizeLayer, std::move(RSM)
                   ))
@@ -108,11 +108,14 @@ llvm::orc::JIT::JIT(std::unique_ptr<llvm::orc::ExecutionSession> ES,
                             {currentEPC.getJITDispatchInfo().JITDispatchContext,
                                     JITSymbolFlags::Exported}},
                     {this->ExecutionSession->intern("__orc_rt_reoptimize_tag"),
-                            {ExecutorAddr(), JITSymbolFlags::Exported}}
+                            {ExecutorAddr(), JITSymbolFlags::Exported}},
+                    {this->ExecutionSession->intern("__print_main_entry_time"),
+                            {ExecutorAddr::fromPtr(&print_main_entry_time),
+                                    JITSymbolFlags::Exported}}
             }
     )));
-    cantFail(this->ReOptimizeLayer->reigsterRuntimeFunctions(*this->MainJD));
-    this->ReOptimizeLayer->setReoptimizeFunc(
+    cantFail(this->ReOptLayer->reigsterRuntimeFunctions(*this->MainJD));
+    this->ReOptLayer->setReoptimizeFunc(
             [&](llvm::orc::ReOptimizeLayer &parent, llvm::orc::ReOptMaterializationUnitID MUID,
                 unsigned CurrentVersion, llvm::orc::ResourceTrackerSP OldResourceTracker,
                 llvm::orc::ThreadSafeModule &TSM) {
@@ -131,6 +134,7 @@ llvm::orc::JIT::~JIT() {
 llvm::Expected<std::unique_ptr<llvm::orc::BaseJIT>> llvm::orc::JIT::create(llvm::orc::RequestModuleCallback AddModule, std::vector<std::string> Arguments) {
     std::string optimize = O1;
     std::string reOptimize = O2;
+    uint64_t threshold = ReOptimizeLayer::CallCountThreshold;
     for (const auto& argument : Arguments) {
         auto splitArgument = split_once(argument, '=');
         if (splitArgument[0] == "-opt") {
@@ -139,7 +143,12 @@ llvm::Expected<std::unique_ptr<llvm::orc::BaseJIT>> llvm::orc::JIT::create(llvm:
         else if (splitArgument[0] == "-reopt") {
             reOptimize = splitArgument[1];
         }
+        else if (splitArgument[0] == "-threshold") {
+            PRINT_ERROR(!is_number(splitArgument[1]), "An invalid value was given for the threshold.")
+            threshold = std::stoull(splitArgument[1]);
+        }
     }
+    ReOptimizeLayer::CallCountThreshold = threshold;
     auto epc = SelfExecutorProcessControl::Create();
     if (!epc)
         return epc.takeError();
@@ -188,25 +197,33 @@ llvm::Error llvm::orc::JIT::addModule(llvm::orc::ThreadSafeModule ThreadSafeModu
             ThreadSafeModule.withModuleDo([&](llvm::Module &module) {
                 // Functions need to be externally linked so that it shows up in the symbol table and reoptimize can make use of it.
                 // We rename the function to avoid conflicts with other internal functions that could have the same name.
-                for (auto &function : module)
+                for (auto &function : module) {
                     if (!function.isDeclaration() && function.hasInternalLinkage()) {
                         int index = 0;
-                        if (Internals.contains(function.getName()))
-                        {
+                        if (Internals.contains(function.getName())) {
                             index = Internals.at(function.getName()) + 1;
                             Internals.insert_or_assign(function.getName(), index);
-                        }
-                        else {
+                        } else {
                             Internals.insert(std::pair(function.getName(), index));
                         }
                         function.setName(function.getName() + Twine(index));
                         function.setLinkage(GlobalValue::ExternalLinkage);
                     }
+#ifdef LOG
+                    if (!this->EntryPoint.empty() && strcmp(this->EntryPoint.c_str(), function.getName().str().c_str()) == 0) {
+                        std::vector<llvm::Value*> paramArrayRef;
+                        auto *type = llvm::FunctionType::get(llvm::Type::getVoidTy(module.getContext()), ArrayRef<Type*>(), false);
+                        llvm::Function *func = llvm::Function::Create(type, Function::ExternalLinkage, "__print_main_entry_time", module);
+                        auto *call = llvm::CallInst::Create(llvm::FunctionCallee(type, func));
+                        call->insertInto(&function.getEntryBlock(), function.getEntryBlock().begin());
+                    }
+#endif
+                }
                 return applyDataLayout(module);
             }))
         return Err;
 
-    return this->ReOptimizeLayer->add(std::move(ResourceTracker), std::move(ThreadSafeModule));
+    return this->ReOptLayer->add(std::move(ResourceTracker), std::move(ThreadSafeModule));
 }
 
 llvm::Expected<llvm::orc::ExecutorAddr> llvm::orc::JIT::lookup(llvm::StringRef Name) {
@@ -227,4 +244,9 @@ llvm::Error llvm::orc::JIT::applyDataLayout(llvm::Module &Module) {
                 inconvertibleErrorCode());
 
     return Error::success();
+}
+
+llvm::Error llvm::orc::JIT::entryPoint(llvm::StringRef Name) {
+    this->EntryPoint = Name;
+    return llvm::Error::success();
 }

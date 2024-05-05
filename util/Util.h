@@ -73,7 +73,8 @@ enum LogType : size_t
 
 #define LOG_PART         \
 X(FrontEnd, "FRONT-END") /* If you log as part of the back-end. */\
-X(BackEnd, "BACK-END")   /* If you log as part of the front-end. */
+X(BackEnd, "BACK-END")   /* If you log as part of the front-end. */\
+X(Whole, "WHOLE")   /* If you log something that is applicable to both parts. */
 
 #define X(type, name) type,
 enum LogPart : size_t
@@ -81,6 +82,19 @@ enum LogPart : size_t
     LOG_PART
 };
 #undef X
+
+/**
+ * Print the current time as part of a log which can be used for getting the time the entry point of an application
+ * was called.
+ */
+void print_main_entry_time();
+
+/**
+ * Check if a string is a number, from [here](https://stackoverflow.com/questions/4654636/how-to-determine-if-a-string-is-a-number-with-c)
+ * @param s The string to check.
+ * @return True if the string is a number, and false otherwise.
+ */
+bool is_number(const std::string& s);
 
 /**
  * Print data to the console.
@@ -162,7 +176,7 @@ public:
         auto r = llvm::orc::ConcurrentIRCompiler::operator()(M);
         auto end = std::chrono::high_resolution_clock::now();
         auto elapsed = std::chrono::duration<double,std::milli>(end-start).count();
-        print_log_data("Compile", LogType::List, LogPart::BackEnd, M.getModuleIdentifier() + std::to_string(elapsed));
+        print_log_data("Compile", LogType::List, LogPart::BackEnd, M.getModuleIdentifier() + " " + std::to_string(elapsed));
         return r;
     }
 };
