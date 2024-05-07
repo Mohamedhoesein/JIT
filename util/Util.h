@@ -153,6 +153,7 @@ bool hasEnding(std::string const &fullString, std::string const &ending);
  */
 llvm::Expected<std::unique_ptr<llvm::orc::IRCompileLayer::IRCompiler>> createCompiler(llvm::orc::JITTargetMachineBuilder JTMB, llvm::ObjectCache *ObjCache = nullptr);
 
+#include <iostream>
 /**
  * A ir compiler to include time spend compiling.
  */
@@ -176,7 +177,16 @@ public:
         auto r = llvm::orc::ConcurrentIRCompiler::operator()(M);
         auto end = std::chrono::high_resolution_clock::now();
         auto elapsed = std::chrono::duration<double,std::milli>(end-start).count();
-        print_log_data("Compile", LogType::List, LogPart::BackEnd, M.getModuleIdentifier() + " " + std::to_string(elapsed));
+        std::string compile;
+        for (auto &F : M) {
+            if (!F.empty()) {
+                compile = F.getName();
+                break;
+            }
+        }
+        if (compile.empty())
+            compile = "print_main_entry_time";
+        print_log_data("Compile", LogType::List, LogPart::BackEnd, M.getModuleIdentifier() + " " + compile + " " + std::to_string(elapsed));
         return r;
     }
 };
