@@ -76,7 +76,7 @@ def run_command(
     :param extra_base: Any extra information to place in the csv file for the time data.
     """
     process = subprocess.run(
-        ["time " + " ".join(command)],
+        [" ".join(["time"] + command)],
         capture_output=True,
         shell=True
     )

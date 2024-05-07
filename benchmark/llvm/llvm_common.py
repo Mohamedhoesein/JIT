@@ -75,13 +75,16 @@ def compile(
         if component == classes.Component.REFERENCE or component == classes.Component.BOTH:
             os.makedirs(full_reference_target)
             os.chdir(full_reference_target)
+            command = ["time", compiler(), "-O3", "-lm"] + list(map(lambda x: "-I" + x, includes)) + source_files
             result = subprocess.run(
-                ["time", compiler(), "-O3", "-lm"]
-                + list(map(lambda x: "-I" + x, includes))
-                + source_files,
+                [" ".join(command)],
                 capture_output=True,
                 shell=True
             )
+            print([" ".join(command)])
+            print(result.stderr)
+            print(result.stdout)
+            print(result.args)
             time = common.get_time(result.stderr)
             with open(add_reference_time_compile_file(base_directory), "a+") as f:
                 f.write(f"{target},{time}\n")
@@ -89,13 +92,16 @@ def compile(
         if component == classes.Component.JIT or component == classes.Component.BOTH:
             os.makedirs(full_jit_target)
             os.chdir(full_jit_target)
+            command = ["time", compiler(), "-S", "-emit-llvm", "-O", "-Xclang", "-disable-llvm-passes"] + list(map(lambda x: "-I" + x, includes)) + source_files
             result = subprocess.run(
-                ["time", compiler(), "-S", "-emit-llvm", "-O", "-Xclang", "-disable-llvm-passes"]
-                + list(map(lambda x: "-I" + x, includes))
-                + source_files,
+                [" ".join(command)],
                 capture_output=True,
                 shell=True
             )
+            print([" ".join(command)])
+            print(result.stderr)
+            print(result.stdout)
+            print(result.args)
             time = common.get_time(result.stderr)
             with open(add_jit_time_compile_file(base_directory), "a+") as f:
                 f.write(f"{target},{time}\n")
