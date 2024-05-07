@@ -79,7 +79,8 @@ def compile(
                 ["time", compiler(), "-O3", "-lm"]
                 + list(map(lambda x: "-I" + x, includes))
                 + source_files,
-                capture_output=True
+                capture_output=True,
+                shell=True
             )
             time = common.get_time(result.stderr)
             with open(add_reference_time_compile_file(base_directory), "a+") as f:
@@ -92,7 +93,8 @@ def compile(
                 ["time", compiler(), "-S", "-emit-llvm", "-O", "-Xclang", "-disable-llvm-passes"]
                 + list(map(lambda x: "-I" + x, includes))
                 + source_files,
-                capture_output=True
+                capture_output=True,
+                shell=True
             )
             time = common.get_time(result.stderr)
             with open(add_jit_time_compile_file(base_directory), "a+") as f:
