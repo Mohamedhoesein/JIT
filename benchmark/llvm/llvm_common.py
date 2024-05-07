@@ -81,10 +81,6 @@ def compile(
                 capture_output=True,
                 shell=True
             )
-            print([" ".join(command)])
-            print(result.stderr)
-            print(result.stdout)
-            print(result.args)
             time = common.get_time(result.stderr)
             with open(add_reference_time_compile_file(base_directory), "a+") as f:
                 f.write(f"{target},{time}\n")
@@ -98,10 +94,6 @@ def compile(
                 capture_output=True,
                 shell=True
             )
-            print([" ".join(command)])
-            print(result.stderr)
-            print(result.stdout)
-            print(result.args)
             time = common.get_time(result.stderr)
             with open(add_jit_time_compile_file(base_directory), "a+") as f:
                 f.write(f"{target},{time}\n")
