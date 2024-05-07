@@ -21,7 +21,7 @@ def default_additional_steps(full_source: str, full_reference_target: str, full_
     pass
 
 
-def default_arguments(directory: str) -> [str]:
+def default_arguments(directory: str) -> typing.List[str]:
     """
     The default for the retrieval of any additional arguments to run a benchmark, always returns an empty array.
     :param directory: The directory of the executed code.
@@ -30,26 +30,28 @@ def default_arguments(directory: str) -> [str]:
     return []
 
 
-def none_data_extraction(result: subprocess.CompletedProcess[bytes]) -> [str]:
+def none_data_extraction(name: str, result: subprocess.CompletedProcess[bytes]) -> typing.List[str]:
     """
     The default for no data extraction, always returns an empty array.
+    :param name: The name of the benchmark that is ran.
     :param result: The result from the subprocess finished.
     :return: The results.
     """
     return []
 
 
-def base_data_extraction(result: subprocess.CompletedProcess[bytes], part: classes.LogPart, expected_columns: int) -> [str]:
+def base_data_extraction(name: str, result: subprocess.CompletedProcess[bytes], part: classes.LogPart, expected_columns: int) -> typing.List[str]:
     """
     The default data extraction from the JIT, "[DATA,time,type,part,tag] data", with data being the data to process. The
     rest is described in classes.Data.
     :param result: The result from the subprocess finished.
+    :param name: The name of the benchmark that is ran.
     :param part: If it is for the front-end or back-end.
     :param expected_columns: How many columns there should be, will only be used if padding is needed.
     :return: The results for each tag.
     """
     lines = result.stdout.splitlines()
-    data: [classes.Data] = []
+    data: typing.List[classes.Data] = []
     for line in lines:
         line = line.decode()
         if line.startswith("[DATA,"):
@@ -57,7 +59,7 @@ def base_data_extraction(result: subprocess.CompletedProcess[bytes], part: class
             data.append(classes.Data(parts[0], parts[1]))
 
     data = list(filter(lambda x: x.part == part, data))
-
+    data.sort(key=lambda x: x.tag)
     mapped = {}
 
     for k, g in groupby(data, lambda x: x.tag):
@@ -88,28 +90,28 @@ def base_data_extraction(result: subprocess.CompletedProcess[bytes], part: class
     return result
 
 
-def default_back_end_data_extraction(expected_columns: int) -> typing.Callable[[subprocess.CompletedProcess[bytes]], typing.List[str]]:
+def default_back_end_data_extraction(expected_columns: int) -> typing.Callable[[str, subprocess.CompletedProcess[bytes]], typing.List[str]]:
     """
     The default data extraction from the JIT back-end.
     :param expected_columns: How many columns there should be, will only be used if padding is needed.
     :return: The results for each tag.
     """
-    return lambda result: base_data_extraction(result, classes.LogPart.BackEnd, expected_columns)
+    return lambda name, result: base_data_extraction(name, result, classes.LogPart.BackEnd, expected_columns)
 
 
-def default_front_end_data_extraction(expected_columns: int) -> typing.Callable[[subprocess.CompletedProcess[bytes]], typing.List[str]]:
+def default_front_end_data_extraction(expected_columns: int) -> typing.Callable[[str, subprocess.CompletedProcess[bytes]], typing.List[str]]:
     """
     The default data extraction from the JIT front-end.
     :param expected_columns: How many columns there should be, will only be used if padding is needed.
     :return: The results for each tag.
     """
-    return lambda result: base_data_extraction(result, classes.LogPart.FrontEnd, expected_columns)
+    return lambda name, result: base_data_extraction(name, result, classes.LogPart.FrontEnd, expected_columns)
 
 
-def default_whole_data_extraction(result: subprocess.CompletedProcess[bytes]) -> typing.List[str]:
+def default_whole_data_extraction(name: str, result: subprocess.CompletedProcess[bytes]) -> typing.List[str]:
     """
     The default data extraction from the whole.
     :param result: The result from the subprocess finished.
     :return: The results for each tag.
     """
-    return base_data_extraction(result, classes.LogPart.Whole, 2)
+    return base_data_extraction(name, result, classes.LogPart.Whole, 2)

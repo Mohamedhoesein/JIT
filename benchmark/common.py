@@ -24,7 +24,7 @@ def add_quote(string: str) -> str:
     """
     Add a quote around a string if it is not present.
     :param string:
-    :return:
+    :return: The quoted string.
     """
     if string[0] != "\"" and string[-1] != "\"":
         string = f"\"{string}\""
@@ -32,28 +32,35 @@ def add_quote(string: str) -> str:
 
 
 def get_time(err: bytes) -> int:
+    """
+    Get the wall clock time in milliseconds from the time command.
+    :param err: The string retrieved from standard error.
+    :return: The wall clock time in milliseconds from the time command.
+    """
     lines = err.decode().splitlines()
     for line in lines:
         parts = line.split(" ")
         for part in parts:
-            if part.endswith("elapsed"):
-                time = part.removesuffix("elapsed")
-                first_split = time.split(":")
+            if part.startswith("real"):
+                time = part.removeprefix("real")
+                time = time.strip()
+                first_split = time.split("m")
                 minutes = int(first_split[0])
                 second_split = first_split[1].split(".")
                 seconds = minutes * 60 + int(second_split[0])
-                return seconds * 10000 + int(second_split[1])
+                return seconds * 10000 + int(second_split[1].removesuffix("s")) * 1000
 
 
 def run_command(
         name: str,
         time_data_file: str,
-        command: [str],
+        command: typing.List[str],
         first: bool,
         last: bool,
-        other_data_extraction: typing.Callable[[subprocess.CompletedProcess[bytes]], typing.List[str]],
+        other_data_extraction: typing.Callable[[str, subprocess.CompletedProcess[bytes]], typing.List[str]],
         other_data_file: str,
-        extra: str
+        extra_other: str,
+        extra_base: str
 ) -> None:
     """
     Run a command and generate some csv files with the data. For the result of the time command will be added to a new
@@ -65,13 +72,11 @@ def run_command(
     :param last: If this is the last command to be run for the current command.
     :param other_data_extraction: A callback to extract any other information from the command.
     :param other_data_file: The name of the file where the extra data should be put.
-    :param extra: Any extra information to place in the csv file.
+    :param extra_other: Any extra information to place in the csv file for the other data.
+    :param extra_base: Any extra information to place in the csv file for the time data.
     """
-    commands = " ".join(command)
     process = subprocess.run(
-        [
-            f"time {commands}"
-        ],
+        ["time " + " ".join(command)],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         shell=True
@@ -81,50 +86,20 @@ def run_command(
     line = (
         (
                 f"\"{name}\"" +
-                (f",{extra}," if extra != "" and extra is not None else ",")
+                (f",{extra_base}," if extra_base != "" and extra_base is not None else ",")
         ) if first else ""
     ) + f"\"{time}\",\"{return_code}\"" + ("\n" if last else ",")
     with open(time_data_file, "a") as f:
         f.write(line)
-    other_data = other_data_extraction(process)
+    other_data = other_data_extraction(name, process)
     other_data = list(map(lambda x: "\"" + x + "\"", other_data))
     if first:
         other_data = ([f"\"{name}\""] +
-                      ([extra] if extra != "" and extra is not None else []) +
+                      ([extra_other] if extra_other != "" and extra_other is not None else []) +
                       other_data)
     other_data_row = ("," if not first and len(other_data) != 0 else "") + ",".join(other_data) + ("\n" if last else "")
     with open(other_data_file, "a") as f:
         f.write(other_data_row)
-
-
-def clean_other_csv(file: str) -> None:
-    """
-    Clean the other data csv file, by removing the extra line at the end.
-    This is taken from https://stackoverflow.com/questions/1877999/delete-final-line-in-file-with-python
-    :param file: The file to clean.
-    """
-    with open(file, "r+", encoding="utf-8") as file:
-        file.seek(0, os.SEEK_END)
-
-        pos = file.tell() - 1
-
-        while pos > 0 and file.read(1) != "\n":
-            pos -= 1
-            file.seek(pos, os.SEEK_SET)
-
-        if pos > 0:
-            file.seek(pos, os.SEEK_SET)
-            file.truncate()
-
-
-def clean_benchmark_csv(file: str) -> None:
-    """
-    Clean benchmark data from the time command. First we make sure that the results for a single command are on a single
-    line. Then any empty lines between different runs will also be removed.
-    :param file: The file to clean.
-    """
-    #files.search_and_replace(file, "\n\"", "\"")
-    #files.search_and_replace(file, "\n\n", "\n")
 
 
 def back_end_parsing_map() -> dict:
@@ -165,7 +140,7 @@ def back_end_args_map() -> dict:
     return mapping
 
 
-def back_end_parsing(back_end: str) -> typing.Callable[[subprocess.CompletedProcess[bytes]], typing.List[str]]:
+def back_end_parsing(back_end: str) -> typing.Callable[[str, subprocess.CompletedProcess[bytes]], typing.List[str]]:
     """
     Get the function that handles the data parsing for a back-end.
     :param back_end: The name of the back-end.
@@ -174,7 +149,7 @@ def back_end_parsing(back_end: str) -> typing.Callable[[subprocess.CompletedProc
     return back_end_parsing_map()[back_end]
 
 
-def back_end_args(back_end: str) -> [classes.Args]:
+def back_end_args(back_end: str) -> typing.List[classes.Args]:
     """
     Get the arguments for the back-end.
     :param back_end: The name of the back-end.
@@ -193,9 +168,9 @@ def valid_back_end(back_end: str) -> bool:
 
 
 def jit_other_data_extraction(
-        front_end: typing.Callable[[subprocess.CompletedProcess[bytes]], typing.List[str]],
-        back_end: typing.Callable[[subprocess.CompletedProcess[bytes]], typing.List[str]]
-) -> typing.Callable[[subprocess.CompletedProcess[bytes]], typing.List[str]]:
+        front_end: typing.Callable[[str, subprocess.CompletedProcess[bytes]], typing.List[str]],
+        back_end: typing.Callable[[str, subprocess.CompletedProcess[bytes]], typing.List[str]]
+) -> typing.Callable[[str, subprocess.CompletedProcess[bytes]], typing.List[str]]:
     """
     A single wrapper function for the data extraction from the front-end and back-end. The results will be concatenated
     into a single array.
@@ -203,14 +178,15 @@ def jit_other_data_extraction(
     :param back_end: The callback for the back-end.
     :return: A callback that will call the callback for the front-end followed by the callback for the back-end.
     """
-    return lambda a: front_end(a) + default.default_whole_data_extraction(a) + back_end(a)
+    return lambda a, b: front_end(a, b) + default.default_whole_data_extraction(a, b) + back_end(a,b)
 
 
 def run(
         path: str,
         prefix: str,
         arguments: typing.Callable[[str], typing.List[str]],
-        component_data: classes.ComponentData
+        component_data: classes.ComponentData,
+        extra: typing.Callable[[str, bool], str]
 ) -> None:
     """
     Run the benchmarks in the JIT, reference implementation, or both.
@@ -218,7 +194,6 @@ def run(
     :param prefix: Any prefix that should be included in the name of the run in the csv file.
     :param arguments: A callback to get additional arguments for the benchmark.
     :param component_data:
-    :return:
     """
     benchmark_reference = files.get_time_data_reference_file(path)
     other_reference = files.get_other_data_reference_file(path)
@@ -242,11 +217,10 @@ def run(
                     i == 4,
                     component_data.reference_data_extraction,
                     other_reference,
+                    extra((prefix if prefix.endswith("/") else prefix + "/") + reference_directory, False),
                     ""
                 )
             print(f"finished running {reference_directory}")
-        clean_benchmark_csv(benchmark_reference)
-        clean_other_csv(other_reference)
     if component_data.for_jit():
         files.recreate_file([benchmark_jit, other_jit])
         jit_directories = files.get_all_directories(files.get_jit_directory(path))
@@ -259,6 +233,7 @@ def run(
                 print(f"started running front-end args {f.name}")
                 for b in component_data.back_end_args:
                     print(f"started running back-end args {b.name}")
+                    extra_data = extra((prefix if prefix.endswith("/") else prefix + "/") + jit_directory, True)
                     for i in range(get_repeats()):
                         run_command(
                             (prefix if prefix.endswith("/") else prefix + "/") + jit_directory + " " + b.name,
@@ -270,13 +245,13 @@ def run(
                             i == 4,
                             jit_other_data_extraction(component_data.front_end_extraction, component_data.back_end_extraction),
                             other_jit,
+                            f"\"front-end {f.name}:{f.args}\",\"back-end {b.name}:{b.args}\"" +
+                            (("," + extra_data) if extra_data != "" else ""),
                             f"\"front-end {f.name}:{f.args}\",\"back-end {b.name}:{b.args}\""
                         )
                     print(f"finished running back-end args {b.name}")
                 print(f"finished running front-end args {f.name}")
             print(f"finished running {jit_directory}")
-        clean_benchmark_csv(benchmark_jit)
-        clean_other_csv(other_jit)
 
 
 def valid_front_end(front_end: str) -> bool:
@@ -347,7 +322,7 @@ def full_parse_jit_args() -> typing.Any:
     return args
 
 
-def args_to_run_array(args: typing.Any) -> [str]:
+def args_to_run_array(args: typing.Any) -> typing.List[str]:
     """
     Convert the arguments object for parse_jit_args() to an array of strings to pass to the run command.
     :param args: The argument to convert.

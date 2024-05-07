@@ -109,7 +109,7 @@ class Args:
     """
     Arguments for either the front-end or back-end.
     """
-    def __init__(self, name: str, args: [str]):
+    def __init__(self, name: str, args: str):
         """
         The constructor for the arguments.
         :param name: A nice name for the arguments for easier reference.
@@ -128,12 +128,12 @@ class ComponentData:
             component: Component,
             front_end_args: typing.List[Args],
             back_end_args: typing.List[Args],
-            front_end_extraction: typing.Callable[[subprocess.CompletedProcess[bytes]], typing.List[str]],
-            back_end_extraction: typing.Callable[[subprocess.CompletedProcess[bytes]], typing.List[str]],
-            reference_data_extraction: typing.Callable[[subprocess.CompletedProcess[bytes]], typing.List[str]],
+            front_end_extraction: typing.Callable[[str, subprocess.CompletedProcess[bytes]], typing.List[str]],
+            back_end_extraction: typing.Callable[[str, subprocess.CompletedProcess[bytes]], typing.List[str]],
+            reference_data_extraction: typing.Callable[[str, subprocess.CompletedProcess[bytes]], typing.List[str]],
             jit: str,
             reference_command: typing.Callable[[str], typing.List[str]],
-            jit_files: typing.Callable[[str], str],
+            jit_files: typing.Callable[[str], typing.List[str]],
     ):
         """
         The constructor for the data.

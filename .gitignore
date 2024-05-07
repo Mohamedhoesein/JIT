@@ -12,3 +12,5 @@ other_data_jit.csv
 other_data_reference.csv
 time_data_jit.csv
 time_data_reference.csv
+temp_jit_compile_data.csv
+temp_reference_compile_data.csv

@@ -93,7 +93,7 @@ def get_data_directory(path: str) -> str:
     return os.path.join(path, "data")
 
 
-def recreate_file(paths: [str]) -> None:
+def recreate_file(paths: typing.List[str]) -> None:
     """
     Delete and create the given file.
     :param paths: The file to create.
@@ -105,7 +105,7 @@ def recreate_file(paths: [str]) -> None:
         f.close()
 
 
-def get_source_files(path: str, filter: typing.Callable[[str], bool]) -> [str]:
+def get_source_files(path: str, filter: typing.Callable[[str], bool]) -> typing.List[str]:
     """
     Get all the source files in a directory.
     :param path: The path to the directory.
@@ -123,7 +123,7 @@ def get_source_files(path: str, filter: typing.Callable[[str], bool]) -> [str]:
     return sources
 
 
-def get_all_source_files(paths: [str], filter: typing.Callable[[str], bool]) -> [str]:
+def get_all_source_files(paths: typing.List[str], filter: typing.Callable[[str], bool]) -> typing.List[str]:
     """
     Get all the source files in each directory.
     :param paths: The paths to each of the directories to include.
@@ -137,7 +137,7 @@ def get_all_source_files(paths: [str], filter: typing.Callable[[str], bool]) -> 
     return sources
 
 
-def get_all_directories(path: str) -> [str]:
+def get_all_directories(path: str) -> typing.List[str]:
     """
     Get all directories directly in a given directory.
     :param path: The directory for which to get the directories.
@@ -150,7 +150,7 @@ def get_all_directories(path: str) -> [str]:
     ]
 
 
-def get_all_concat_directories(path: str) -> [str]:
+def get_all_concat_directories(path: str) -> typing.List[str]:
     """
     Get all directories directly in a given directory.
     :param path: The directory for which to get the directories.
@@ -170,7 +170,7 @@ def remove_if_exists(path: str) -> None:
         os.remove(path)
 
 
-def remove_files(paths: [str]) -> None:
+def remove_files(paths: typing.List[str]) -> None:
     """
     Remove multiple items if they exist.
     :param paths: The paths to the items to delete.

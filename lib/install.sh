@@ -6,6 +6,6 @@ cd $script_dir/llvm-project
 git checkout llvmorg-18.1.5
 mkdir ../llvm
 cd ../llvm
-cmake -DCMAKE_BUILD_TYPE=$1 -DLLVM_USE_PERF=ON ../llvm-project/llvm
+cmake -DCMAKE_BUILD_TYPE=$1 ../llvm-project/llvm
 make -j $2
 cd ../

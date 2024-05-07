@@ -40,9 +40,9 @@ def filter_wrapper(filter_source_files: typing.Callable[[str], bool]) -> typing.
 
 
 def compile(
-    sources: [str],
+    sources: typing.List[str],
     base_directory: str,
-    includes: [str],
+    includes: typing.List[str],
     filter_source_files: typing.Callable[[str], bool],
     additional_steps: typing.Callable[[str, str, str, classes.Component], None],
     component: classes.Component
@@ -75,25 +75,33 @@ def compile(
         if component == classes.Component.REFERENCE or component == classes.Component.BOTH:
             os.makedirs(full_reference_target)
             os.chdir(full_reference_target)
-            subprocess.run(
-                [compiler(), "-O3", "-lm"]
+            result = subprocess.run(
+                ["time", compiler(), "-O3", "-lm"]
                 + list(map(lambda x: "-I" + x, includes))
-                + source_files
+                + source_files,
+                capture_output=True
             )
+            time = common.get_time(result.stderr)
+            with open(add_reference_time_compile_file(base_directory), "a+") as f:
+                f.write(f"{target},{time}\n")
         full_jit_target = os.path.join(jit_directory, target)
         if component == classes.Component.JIT or component == classes.Component.BOTH:
             os.makedirs(full_jit_target)
             os.chdir(full_jit_target)
-            subprocess.run(
-                [compiler(), "-S", "-emit-llvm", "-O", "-Xclang", "-disable-llvm-passes"]
+            result = subprocess.run(
+                ["time", compiler(), "-S", "-emit-llvm", "-O", "-Xclang", "-disable-llvm-passes"]
                 + list(map(lambda x: "-I" + x, includes))
-                + source_files
+                + source_files,
+                capture_output=True
             )
+            time = common.get_time(result.stderr)
+            with open(add_jit_time_compile_file(base_directory), "a+") as f:
+                f.write(f"{target},{time}\n")
         additional_steps(full_source, full_reference_target, full_jit_target, component)
         print(f"finished compiling {source}")
 
 
-def get_llvm_files(path: str) -> [str]:
+def get_llvm_files(path: str) -> typing.List[str]:
     """
     List all LLVM IR files, those with an .ll.
     :param path: The directory for which to list the LLVM IR files.
@@ -109,7 +117,7 @@ def get_llvm_files(path: str) -> [str]:
     return sources
 
 
-def get_reference_file_name(path: str) -> [str]:
+def get_reference_file_name(path: str) -> typing.List[str]:
     """
     Get the full path for the reference implementation, this assumes that it is compiled with the compile method above,
     and that it is in the given path.
@@ -138,12 +146,33 @@ def parse_compile_args() -> typing.Any:
     return args
 
 
+def read_compile_data(prefix: str, path: str) -> typing.Callable[[str,bool],str]:
+    """
+    Create a function that reads the time taken to compile a benchmark.
+    :param path: The path of the benchmark.
+    :return: A function that reads the time taken to compile a benchmark.
+    """
+    def read_data(name: str, jit: bool) -> str:
+        full_path = ""
+        if jit:
+            full_path = add_jit_time_compile_file(path)
+        else:
+            full_path = add_reference_time_compile_file(path)
+        with open(full_path, "r+") as f:
+            for line in f.readlines():
+                components = line.split(",", 1)
+                if (name).startswith(prefix + "/" + components[0]):
+                    return "PreCompile: " + components[1].strip()
+        return "PreCompile: -1"
+    return read_data
+
+
 def run(
     path: str,
     jit: str,
     prefix: str,
     arguments: typing.Callable[[str], typing.List[str]],
-    back_end_extraction: typing.Callable[[subprocess.CompletedProcess[bytes]], typing.List[str]],
+    back_end_extraction: typing.Callable[[str, subprocess.CompletedProcess[bytes]], typing.List[str]],
     component: classes.Component,
     back_end: str
 ) -> None:
@@ -171,11 +200,12 @@ def run(
             jit,
             get_reference_file_name,
             get_llvm_files
-        )
+        ),
+        read_compile_data(prefix, path)
     )
 
 
-def args_to_compile_array(args: typing.Any) -> [str]:
+def args_to_compile_array(args: typing.Any) -> typing.List[str]:
     """
     Convert the arguments object for parse_compile_args() to an array of strings to pass to the compilation command.
     :param args: The argument to convert.
@@ -214,3 +244,21 @@ def add_compile_file(path: str) -> str:
     :return: The path to the compile script.
     """
     return os.path.join(path, "compile.py")
+
+
+def add_reference_time_compile_file(path: str) -> str:
+    """
+    Add the name of the file where the temporary results from the compilation are stored.
+    :param path: The path that is the basis for the temporary results.
+    :return: The path to the temporary results.
+    """
+    return os.path.join(path, "temp_reference_compile_data.csv")
+
+
+def add_jit_time_compile_file(path: str) -> str:
+    """
+    Add the name of the file where the temporary results from the compilation are stored.
+    :param path: The path that is the basis for the temporary results.
+    :return: The path to the temporary results.
+    """
+    return os.path.join(path, "temp_jit_compile_data.csv")

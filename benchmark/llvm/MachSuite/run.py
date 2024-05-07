@@ -9,7 +9,7 @@ from .. import llvm_common
 from ... import common
 
 
-def arguments(directory: str) -> [str]:
+def arguments(directory: str) -> typing.List[str]:
     """
     Get the arguments needed to run a benchmark.
     :param directory: The directory of the executed code.

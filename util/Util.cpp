@@ -27,7 +27,6 @@ void print_main_entry_time() {
     std::chrono::time_point<std::chrono::system_clock> now = std::chrono::system_clock::now();
     auto duration = now.time_since_epoch();
     auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
-    print_log_data("Start", LogType::List, LogPart::Whole, std::to_string(millis));
     print_log_data("Main_Entry", LogType::List, LogPart::Whole, std::to_string(millis));
 }
 

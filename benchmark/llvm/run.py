@@ -21,6 +21,10 @@ def main(args: typing.Any):
     files.remove_data_files(base_directory)
     component = common.args_to_component(args)
     for directory in sorted(directories):
+        temp_compile_file = llvm_common.add_reference_time_compile_file(directory)
+        files.remove_files([temp_compile_file])
+        temp_compile_file = llvm_common.add_jit_time_compile_file(directory)
+        files.remove_files([temp_compile_file])
         print("started " + directory)
         compile_file = llvm_common.add_compile_file(directory)
         run_file = files.add_run_file(directory)

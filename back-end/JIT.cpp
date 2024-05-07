@@ -119,8 +119,7 @@ llvm::orc::JIT::JIT(std::unique_ptr<llvm::orc::ExecutionSession> ES,
             [&](llvm::orc::ReOptimizeLayer &parent, llvm::orc::ReOptMaterializationUnitID MUID,
                 unsigned CurrentVersion, llvm::orc::ResourceTrackerSP OldResourceTracker,
                 llvm::orc::ThreadSafeModule &TSM) {
-                    this->ReOptimizationTransform(TSM);
-                    return Error::success();
+                    return this->ReOptimizationTransform(TSM).takeError();
                 });
 }
 
