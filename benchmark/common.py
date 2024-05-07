@@ -31,7 +31,7 @@ def add_quote(string: str) -> str:
     return string
 
 
-def get_time(err: bytes) -> int:
+def get_time(err: bytes) -> float:
     """
     Get the wall clock time in milliseconds from the time command.
     :param err: The string retrieved from standard error.
@@ -45,10 +45,8 @@ def get_time(err: bytes) -> int:
                 time = part.removeprefix("real")
                 time = time.strip()
                 first_split = time.split("m")
-                minutes = int(first_split[0])
-                second_split = first_split[1].split(".")
-                seconds = minutes * 60 + int(second_split[0])
-                return seconds * 10000 + int(second_split[1].removesuffix("s")) * 1000
+                minutes = float(first_split[0])
+                return minutes * 60 + float(first_split[1].removesuffix("s")) * 10000
 
 
 def run_command(
