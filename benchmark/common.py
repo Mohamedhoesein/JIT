@@ -225,7 +225,7 @@ def run(
             print(f"started running {jit_directory}")
             full_jit_directory = os.path.join(files.get_jit_directory(path), jit_directory)
             sources = component_data.jit_files(full_jit_directory)
-            jit_args = list(filter(lambda arg: arg != "", [jit_directory] + arguments(full_jit_directory)))
+            jit_args = list(filter(lambda arg: arg != "" and arg !="\"\"", [jit_directory] + ["\""+",".join(arguments(full_jit_directory))+"\""]))
             for f in component_data.front_end_args:
                 print(f"started running front-end args {f.name}")
                 for b in component_data.back_end_args:
