@@ -3,6 +3,7 @@
 #include <iostream>
 #include <filesystem>
 #include <getopt.h>
+#include <numeric>
 
 #include "Util.h"
 
@@ -23,6 +24,106 @@ char const *log_part_name[] =
         };
 #undef X
 
+/**
+ * A ir compiler to include time spend compiling.
+ */
+class LogCompiler : public llvm::orc::ConcurrentIRCompiler {
+public:
+    /**
+     * The constructor for the compiler.
+     * @param JTMB The target machine builder.
+     * @param ObjCache The cache for objects.
+     */
+    explicit LogCompiler(llvm::orc::JITTargetMachineBuilder JTMB, llvm::ObjectCache *ObjCache = nullptr)
+            : llvm::orc::ConcurrentIRCompiler(JTMB, ObjCache) {}
+
+    /**
+     * Compile a module.
+     * @param M The module to compile.
+     * @return The compiled module.
+     */
+    llvm::Expected<std::unique_ptr<llvm::MemoryBuffer>> operator()(llvm::Module &M) override {
+        auto start = std::chrono::high_resolution_clock::now();
+        auto r = llvm::orc::ConcurrentIRCompiler::operator()(M);
+        auto end = std::chrono::high_resolution_clock::now();
+        auto elapsed = std::chrono::duration<double,std::milli>(end-start).count();
+        std::string compile;
+        for (auto &F : M) {
+            if (!F.empty()) {
+                compile = F.getName();
+                break;
+            }
+        }
+        if (compile.empty())
+            compile = "print_main_entry_time";
+        print_log_data("Compile", LogType::List, LogPart::BackEnd, M.getModuleIdentifier() + " " + compile + " " + std::to_string(elapsed));
+        return r;
+    }
+};
+
+class LogPlugin : public llvm::orc::ObjectLinkingLayer::Plugin {
+private:
+    std::string getSymbols(llvm::orc::MaterializationResponsibility &MR) {
+        std::vector<std::string> symbols;
+        for (auto symbol : MR.getSymbols())
+            symbols.push_back((*symbol.getFirst()).str());
+        return std::accumulate(std::begin(symbols) + 1, std::end(symbols), symbols[0],
+                               [](std::string s0, std::string const& s1) { return s0 += "|" + s1; });
+    }
+public:
+    void modifyPassConfig(llvm::orc::MaterializationResponsibility &MR,
+                          llvm::jitlink::LinkGraph &G,
+                          llvm::jitlink::PassConfiguration &Config) override {}
+
+    void notifyMaterializing(llvm::orc::MaterializationResponsibility &MR,
+                             llvm::jitlink::LinkGraph &G,
+                             llvm::jitlink::JITLinkContext &Ctx,
+                             llvm::MemoryBufferRef InputObject) override {}
+
+    void notifyLoaded(llvm::orc::MaterializationResponsibility &MR) override {
+        auto now = std::chrono::system_clock::now();
+        auto duration = now.time_since_epoch();
+        auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+        print_log_data(
+                "Begin_Linking",
+                LogType::List,
+                LogPart::BackEnd,
+                getSymbols(MR) + " " + std::to_string(millis)
+        );
+    }
+
+    llvm::Error notifyEmitted(llvm::orc::MaterializationResponsibility &MR) override {
+        auto now = std::chrono::system_clock::now();
+        auto duration = now.time_since_epoch();
+        auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+        std::vector<std::string> symbols;
+        for (auto symbol : MR.getSymbols())
+            symbols.push_back((*symbol.getFirst()).str());
+        print_log_data(
+                "End_Linking",
+                LogType::List,
+                LogPart::BackEnd,
+                getSymbols(MR) + " " + std::to_string(millis)
+        );
+        return llvm::Error::success();
+    }
+
+    llvm::Error notifyFailed(llvm::orc::MaterializationResponsibility &MR) override {
+        return llvm::Error::success();
+    }
+
+    llvm::Error notifyRemovingResources(llvm::orc::JITDylib &JD, llvm::orc::ResourceKey K) override {
+        return llvm::Error::success();
+    }
+
+    void notifyTransferringResources(llvm::orc::JITDylib &JD, llvm::orc::ResourceKey DstKey,
+                                     llvm::orc::ResourceKey SrcKey) override {}
+
+    SyntheticSymbolDependenciesMap getSyntheticSymbolDependencies(llvm::orc::MaterializationResponsibility &MR) override {
+        return SyntheticSymbolDependenciesMap();
+    }
+};
+
 void print_main_entry_time() {
     std::chrono::time_point<std::chrono::system_clock> now = std::chrono::system_clock::now();
     auto duration = now.time_since_epoch();
@@ -37,7 +138,7 @@ bool is_number(const std::string& s)
 }
 
 void print_log_data(const std::string& tag, LogType type, LogPart part, const std::string& data) {
-    std::chrono::time_point<std::chrono::system_clock> now = std::chrono::system_clock::now();
+    auto now = std::chrono::system_clock::now();
     auto duration = now.time_since_epoch();
     auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
     std::cout << "[DATA," << millis << "," << log_type_name[type] << "," << log_part_name[part] << "," << tag << "] " << " "
@@ -122,4 +223,12 @@ llvm::Expected<std::unique_ptr<llvm::orc::IRCompileLayer::IRCompiler>> createCom
 #else
     return std::make_unique<llvm::orc::ConcurrentIRCompiler>(std::move(JTMB), ObjCache);
 #endif
+}
+
+llvm::Expected<std::unique_ptr<llvm::orc::ObjectLinkingLayer>> createLinkingLayer(llvm::orc::ExecutionSession &ES, std::unique_ptr<llvm::jitlink::JITLinkMemoryManager> &MemMgr) {
+    auto layer = std::make_unique<llvm::orc::ObjectLinkingLayer>(ES, std::move(MemMgr));
+#ifdef LOG
+    layer->addPlugin(std::make_unique<LogPlugin>());
+#endif
+    return layer;
 }

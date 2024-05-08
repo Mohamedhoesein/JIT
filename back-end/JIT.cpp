@@ -171,17 +171,19 @@ llvm::Expected<std::unique_ptr<llvm::orc::BaseJIT>> llvm::orc::JIT::create(llvm:
     if (!dl)
         return dl.takeError();
 
-    auto ol = std::make_unique<ObjectLinkingLayer>(
-            *es, std::make_unique<jitlink::InProcessMemoryManager>(4096));
+    std::unique_ptr<jitlink::JITLinkMemoryManager> temp = std::make_unique<jitlink::InProcessMemoryManager>(4096);
+    auto ol = createLinkingLayer(*es, temp);
+    if (!ol)
+        return ol.takeError();
 
-    auto jlrsm = JITLinkRedirectableSymbolManager::Create(*es, *ol, es->createBareJITDylib("main"));
+    auto jlrsm = JITLinkRedirectableSymbolManager::Create(*es, **ol, es->createBareJITDylib("main"));
 
     if (!jlrsm)
         return jlrsm.takeError();
 
     return std::make_unique<JIT>(std::move(es), std::move(*epciu),
                                  std::move(jtmb), std::move(*dl), std::move(*jlrsm),
-                                 std::move(ol), std::move(AddModule),
+                                 std::move(*ol), std::move(AddModule),
                                  optimize, reOptimize);
 }
 

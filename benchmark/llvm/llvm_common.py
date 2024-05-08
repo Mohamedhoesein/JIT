@@ -61,6 +61,7 @@ def compile(
     source_directory = files.get_source_directory(base_directory)
     reference_directory = files.get_reference_directory(base_directory)
     jit_directory = files.get_jit_directory(base_directory)
+    files.remove_files([add_reference_time_compile_file(base_directory)])
     if os.path.exists(reference_directory):
         shutil.rmtree(reference_directory)
     if os.path.exists(jit_directory):

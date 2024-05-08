@@ -72,7 +72,7 @@ def base_data_extraction(name: str, result: subprocess.CompletedProcess[bytes], 
             exit(-1)
         group.sort(key=lambda x: x.time)
         if type == classes.LogType.List:
-            mapped[k] = "" + ",".join(list(map(lambda x: x.data, group))) + ""
+            mapped[k] = ",".join(list(map(lambda x: str(x.time) + "\\" + x.data, group)))
         elif type == classes.LogType.Average:
             if any(not x.isnumeric() for x in group):
                 print("Got non numeric value for average log type.")

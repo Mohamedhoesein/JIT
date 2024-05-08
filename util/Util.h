@@ -153,42 +153,12 @@ bool hasEnding(std::string const &fullString, std::string const &ending);
  */
 llvm::Expected<std::unique_ptr<llvm::orc::IRCompileLayer::IRCompiler>> createCompiler(llvm::orc::JITTargetMachineBuilder JTMB, llvm::ObjectCache *ObjCache = nullptr);
 
-#include <iostream>
 /**
- * A ir compiler to include time spend compiling.
+ * Create an linking layer.
+ * @param ES The execution session.
+ * @param MemMgr The memory manager.
+ * @return The linking layer.
  */
-class LogCompiler : public llvm::orc::ConcurrentIRCompiler {
-public:
-    /**
-     * The constructor for the compiler.
-     * @param JTMB The target machine builder.
-     * @param ObjCache The cache for objects.
-     */
-    explicit LogCompiler(llvm::orc::JITTargetMachineBuilder JTMB, llvm::ObjectCache *ObjCache = nullptr)
-            : llvm::orc::ConcurrentIRCompiler(JTMB, ObjCache) {}
-
-    /**
-     * Compile a module.
-     * @param M The module to compile.
-     * @return The compiled module.
-     */
-    llvm::Expected<std::unique_ptr<llvm::MemoryBuffer>> operator()(llvm::Module &M) override {
-        auto start = std::chrono::high_resolution_clock::now();
-        auto r = llvm::orc::ConcurrentIRCompiler::operator()(M);
-        auto end = std::chrono::high_resolution_clock::now();
-        auto elapsed = std::chrono::duration<double,std::milli>(end-start).count();
-        std::string compile;
-        for (auto &F : M) {
-            if (!F.empty()) {
-                compile = F.getName();
-                break;
-            }
-        }
-        if (compile.empty())
-            compile = "print_main_entry_time";
-        print_log_data("Compile", LogType::List, LogPart::BackEnd, M.getModuleIdentifier() + " " + compile + " " + std::to_string(elapsed));
-        return r;
-    }
-};
+llvm::Expected<std::unique_ptr<llvm::orc::ObjectLinkingLayer>> createLinkingLayer(llvm::orc::ExecutionSession &ES, std::unique_ptr<llvm::jitlink::JITLinkMemoryManager> &MemMgr);
 
 #endif //JIT_UTIL_H
