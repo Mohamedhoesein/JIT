@@ -63,10 +63,11 @@ public:
 
 class LogPlugin : public llvm::orc::ObjectLinkingLayer::Plugin {
 private:
-    std::string getSymbols(llvm::orc::MaterializationResponsibility &MR) {
+    static std::string getSymbols(llvm::orc::MaterializationResponsibility &MR) {
         std::vector<std::string> symbols;
         for (auto symbol : MR.getSymbols())
             symbols.push_back((*symbol.getFirst()).str());
+        std::sort(symbols.begin(), symbols.end());
         return std::accumulate(std::begin(symbols) + 1, std::end(symbols), symbols[0],
                                [](std::string s0, std::string const& s1) { return s0 += "|" + s1; });
     }
@@ -96,9 +97,6 @@ public:
         auto now = std::chrono::system_clock::now();
         auto duration = now.time_since_epoch();
         auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
-        std::vector<std::string> symbols;
-        for (auto symbol : MR.getSymbols())
-            symbols.push_back((*symbol.getFirst()).str());
         print_log_data(
                 "End_Linking",
                 LogType::List,
