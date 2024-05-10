@@ -216,7 +216,7 @@ def run(
             for i in range(get_repeats()):
                 print(f"started run {i + 1}")
                 prestep(path, source_directory, False, i)
-                current_prefix = (prefix if prefix.endswith("/") else prefix + "/") + source_directory.replace("/", "_")
+                current_prefix = (prefix if prefix.endswith("/") else prefix + "/") + source_directory
                 extra_data = extra(source_directory, False, i)
                 run_command(
                     current_prefix,
