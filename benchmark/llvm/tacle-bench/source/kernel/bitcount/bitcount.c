@@ -56,7 +56,7 @@ int bitcount_bit_shifter( long int x )
 
 int bitcount_return()
 {
-  return (bitcount_n + (-1095) ) != 0;
+  return ( bitcount_n + ( -1095 ) ) != 0;
 }
 
 void bitcount_init()
@@ -89,7 +89,7 @@ unsigned long bitcount_random( void )
   return ( t );
 }
 
-void bitcount_main()
+void _Pragma( "entrypoint" ) bitcount_main()
 {
   unsigned int i, j;
   _Pragma( "loopbound min 8 max 8" )

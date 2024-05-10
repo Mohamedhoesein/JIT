@@ -32,74 +32,85 @@ def get_llvm_prefix() -> str:
 
 def filter_wrapper(filter_source_files: typing.Callable[[str], bool]) -> typing.Callable[[str], bool]:
     """
-    Filter all files that should be compiled.
-    :param filter_source_files: A callback for a filter specific to a benchmark.
+    Create a callback to filter all files that should be compiled.
+    :param filter_source_files: A callback to filter source files of a benchmark.
     :return: A callback that returns True if a file should be included, and False otherwise.
     """
     return lambda name: (name.endswith(".c") or name.endswith(".h")) and filter_source_files(name)
 
 
 def compile(
-    sources: typing.List[str],
-    base_directory: str,
-    includes: typing.List[str],
-    filter_source_files: typing.Callable[[str], bool],
-    additional_steps: typing.Callable[[str, str, str, classes.Component], None],
-    component: classes.Component
-) -> None:
+        includes: typing.List[str],
+        filter_source_files: typing.Callable[[str], bool],
+        additional_steps: typing.Callable[[str, str, str, classes.Component], None]
+) -> typing.Callable[[str, str, bool, int], None]:
     """
-    Compile in the source code in the given directories.
-    :param sources: The folders containing the source code to be compiled, this must be relative to base_directory.
-    :param base_directory: The base directory for the source code, and the output files for the JIT and
-    reference implementation.
-    :param includes: Any folders that should be included.
-    :param filter_source_files: A callback to indicate what files should be included, return True if it should be
-    included, and False otherwise.
-    :param additional_steps: A callback for any steps that should be taken after compilation.
-    :param component: If the source should be compiled for the JIT, or the reference implementation.
+    Create a callback to compile a benchmark.
+    :param includes: The folders to include.
+    :param filter_source_files: A callback to filter source files of a benchmark.
+    :param additional_steps: A callback for any additional steps to take.
+    :return: A callback to compile a benchmark.
     """
-    source_directory = files.get_source_directory(base_directory)
-    reference_directory = files.get_reference_directory(base_directory)
-    jit_directory = files.get_jit_directory(base_directory)
-    files.remove_files([add_reference_time_compile_file(base_directory)])
-    if os.path.exists(reference_directory):
-        shutil.rmtree(reference_directory)
-    if os.path.exists(jit_directory):
-        shutil.rmtree(jit_directory)
-    for source in sorted(sources):
-        target = source.replace("/", "_").replace("\\", "_")
-        full_source = os.path.join(source_directory, source)
-        print(f"started compiling {source}")
-        source_files = files.get_all_source_files([full_source], filter_wrapper(filter_source_files))
-        source_files += files.get_all_source_files(includes, filter_wrapper(filter_source_files))
-        full_reference_target = os.path.join(reference_directory, target)
-        if component == classes.Component.REFERENCE or component == classes.Component.BOTH:
-            os.makedirs(full_reference_target)
-            os.chdir(full_reference_target)
-            command = ["time", compiler(), "-O3", "-lm"] + list(map(lambda x: "-I" + x, includes)) + source_files
-            result = subprocess.run(
-                [" ".join(command)],
-                capture_output=True,
-                shell=True
-            )
-            time = common.get_time(result.stderr)
-            with open(add_reference_time_compile_file(base_directory), "a+") as f:
-                f.write(f"{target},{time}\n")
-        full_jit_target = os.path.join(jit_directory, target)
-        if component == classes.Component.JIT or component == classes.Component.BOTH:
+    include_sources = files.get_all_source_files(includes, filter_wrapper(filter_source_files))
+
+    def __temp__(benchmark_root: str, benchmark: str, jit: bool, i: int):
+        """
+        Compile a benchmark.
+        :param benchmark_root: The root directory of the benchmark.
+        :param benchmark: The benchmark to run.
+        :param jit: If it is for a JIT.
+        :param i: The run number.
+        """
+        print(f"started compiling {benchmark} for run {i + 1}")
+        source_directory = files.get_source_directory(benchmark_root)
+        source_files = files.get_all_source_files([os.path.join(source_directory, benchmark)], filter_wrapper(filter_source_files))
+        reference_directory = files.get_reference_directory(benchmark_root)
+        full_reference_target = os.path.join(reference_directory, benchmark.replace("/", "_"))
+        jit_directory = files.get_jit_directory(benchmark_root)
+        full_jit_target = os.path.join(jit_directory, benchmark.replace("/", "_"))
+        if jit:
+            if os.path.exists(full_jit_target):
+                shutil.rmtree(full_jit_target)
             os.makedirs(full_jit_target)
             os.chdir(full_jit_target)
-            command = ["time", compiler(), "-S", "-emit-llvm", "-O", "-Xclang", "-disable-llvm-passes"] + list(map(lambda x: "-I" + x, includes)) + source_files
+            command = ["time", compiler(), "-S", "-emit-llvm", "-O", "-Xclang", "-disable-llvm-passes"] + list(map(lambda x: "-I" + x, includes)) + source_files + include_sources
+            result = subprocess.run(
+                [" ".join(command)],
+                capture_output=True,
+                shell=True
+            )
+            while len(os.listdir(full_jit_target)) == 0:
+                pass
+            time = common.get_time(result.stderr)
+            with open(add_jit_time_compile_file(benchmark_root), "a+") as f:
+                if i == 0:
+                    f.write(benchmark)
+                f.write(f",{time}")
+                if i == 4:
+                    f.write("\n")
+        else:
+            if os.path.exists(full_reference_target):
+                shutil.rmtree(full_reference_target)
+            os.makedirs(full_reference_target)
+            os.chdir(full_reference_target)
+            command = ["time", compiler(), "-O3", "-lm"] + list(map(lambda x: "-I" + x, includes)) + source_files + include_sources
             result = subprocess.run(
                 [" ".join(command)],
                 capture_output=True,
                 shell=True
             )
             time = common.get_time(result.stderr)
-            with open(add_jit_time_compile_file(base_directory), "a+") as f:
-                f.write(f"{target},{time}\n")
-        additional_steps(full_source, full_reference_target, full_jit_target, component)
-        print(f"finished compiling {source}")
+            time = time if time is not None else -1
+            with open(add_reference_time_compile_file(benchmark_root), "a+") as f:
+                if i == 0:
+                    f.write(benchmark)
+                f.write(f",{time}")
+                if i == 4:
+                    f.write("\n")
+
+        additional_steps(os.path.join(source_directory, benchmark), full_reference_target, full_jit_target, classes.Component.JIT if jit else classes.Component.REFERENCE)
+        print(f"finished compiling {benchmark} for run {i + 1}")
+    return __temp__
 
 
 def get_llvm_files(path: str) -> typing.List[str]:
@@ -147,14 +158,20 @@ def parse_compile_args() -> typing.Any:
     return args
 
 
-def read_compile_data(prefix: str, path: str) -> typing.Callable[[str,bool],str]:
+def read_compile_data(path: str) -> typing.Callable[[str, bool, int], str]:
     """
-    Create a function that reads the time taken to compile a benchmark.
+    Create a callback that reads the time taken to compile a benchmark.
     :param path: The path of the benchmark.
     :return: A function that reads the time taken to compile a benchmark.
     """
-    def read_data(name: str, jit: bool) -> str:
-        full_path = ""
+    def __temp__(name: str, jit: bool, i: int) -> str:
+        """
+        Read the time taken to compile a benchmark.
+        :param name: The name of the benchmark.
+        :param jit: If it is for a JIT.
+        :param i: The run number.
+        :return: The time it took to compile, with "PreCompile: " as a prefix
+        """
         if jit:
             full_path = add_jit_time_compile_file(path)
         else:
@@ -162,23 +179,31 @@ def read_compile_data(prefix: str, path: str) -> typing.Callable[[str,bool],str]
         with open(full_path, "r+") as f:
             for line in f.readlines():
                 components = line.split(",", 1)
-                if (name).startswith(prefix + "/" + components[0]):
-                    return "PreCompile: " + components[1].strip()
+                if name.startswith(components[0]):
+                    return "PreCompile: " + components[1].split(",")[i].strip()
         return "PreCompile: -1"
-    return read_data
+    return __temp__
 
 
 def run(
-    path: str,
-    jit: str,
-    prefix: str,
-    arguments: typing.Callable[[str], typing.List[str]],
-    back_end_extraction: typing.Callable[[str, subprocess.CompletedProcess[bytes]], typing.List[str]],
-    component: classes.Component,
-    back_end: str
+        includes: typing.List[str],
+        filter_source_files: typing.Callable[[str], bool],
+        additional_steps: typing.Callable[[str, str, str, classes.Component], None],
+        sources: typing.List[str],
+        path: str,
+        jit: str,
+        prefix: str,
+        arguments: typing.Callable[[str], typing.List[str]],
+        back_end_extraction: typing.Callable[[str, subprocess.CompletedProcess[bytes]], typing.List[str]],
+        component: classes.Component,
+        back_end: str
 ) -> None:
     """
     Run the benchmark in a specific folder.
+    :param includes: The folders to include when compiling.
+    :param filter_source_files: A callback to filter source files of a benchmark.
+    :param additional_steps: A callback for any additional steps to take after compiling.
+    :param sources: The benchmarks to run.
     :param path: The path to the root of the benchmark.
     :param jit: The full path to the JIT implementation.
     :param prefix: The prefix to use in the name for each csv record.
@@ -187,9 +212,14 @@ def run(
     :param component: If it is for the JIT, reference implementation, or both.
     :param back_end: The name of the back-end being used.
     """
+    temp_jit = add_jit_time_compile_file(path)
+    temp_reference = add_reference_time_compile_file(path)
+    files.remove_files([temp_jit, temp_reference])
     common.run(
         path,
         prefix,
+        compile(includes, filter_source_files, additional_steps),
+        sources,
         arguments,
         classes.ComponentData(
             component,
@@ -202,7 +232,7 @@ def run(
             get_reference_file_name,
             get_llvm_files
         ),
-        read_compile_data(prefix, path)
+        read_compile_data(path)
     )
 
 

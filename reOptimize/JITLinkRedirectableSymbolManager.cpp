@@ -17,6 +17,7 @@ using namespace llvm::orc;
 void JITLinkRedirectableSymbolManager::emitRedirectableSymbols(
         std::unique_ptr<MaterializationResponsibility> R,
         const SymbolAddrMap &InitialDests) {
+    auto &ES = ObjLinkingLayer.getExecutionSession();
     std::unique_lock<std::mutex> Lock(Mutex);
     if (GetNumAvailableStubs() < InitialDests.size())
         if (auto Err = grow(InitialDests.size() - GetNumAvailableStubs())) {
@@ -85,8 +86,10 @@ Error JITLinkRedirectableSymbolManager::redirectInner(
         StubHandle StubID = SymbolToStubs[&TargetJD].at(K);
         PtrWrites.push_back({StubPointers[StubID].getAddress(), V.getAddress()});
     }
-    return ES.getExecutorProcessControl().getMemoryAccess().writePointers(
-            PtrWrites);
+    return ObjLinkingLayer.getExecutionSession()
+            .getExecutorProcessControl()
+            .getMemoryAccess()
+            .writePointers(PtrWrites);
 }
 
 Error JITLinkRedirectableSymbolManager::grow(unsigned Need) {
@@ -101,6 +104,7 @@ Error JITLinkRedirectableSymbolManager::grow(unsigned Need) {
     SymbolLookupSet LookupSymbols;
     DenseMap<SymbolStringPtr, ExecutorSymbolDef *> NewDefsMap;
 
+    auto &ES = ObjLinkingLayer.getExecutionSession();
     Triple TT = ES.getTargetTriple();
     auto G = std::make_unique<jitlink::LinkGraph>(
             "<INDIRECT STUBS>", TT, TT.isArch64Bit() ? 8 : 4,

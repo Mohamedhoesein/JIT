@@ -23,12 +23,11 @@
 namespace llvm {
     namespace orc {
 
-        using ReOptMaterializationUnitID = uint64_t;
-
         class ReOptimizeLayer : public IRLayer, public ResourceManager {
         public:
             /// Threshold for recompilation
             static uint64_t CallCountThreshold;
+            using ReOptMaterializationUnitID = uint64_t;
 
             /// AddProfilerFunc will be called when ReOptimizeLayer emits the first
             /// version of a materialization unit in order to inject profiling code and
@@ -140,10 +139,14 @@ namespace llvm {
             using SPSReoptimizeArgList =
                     shared::SPSArgList<ReOptMaterializationUnitID, uint32_t>;
             using SendErrorFn = unique_function<void(Error)>;
-
+            Expected<SymbolMap>
+            emitMUImplSymbols(ReOptMaterializationUnitState &MUState,
+                                               uint32_t Version, JITDylib &JD,
+                                               ThreadSafeModule TSM);
             Expected<SymbolMap> emitMUImplSymbols(ReOptMaterializationUnitState &MUState,
                                                   uint32_t Version, JITDylib &JD,
-                                                  ThreadSafeModule TSM);
+                                                  ThreadSafeModule TSM,
+                                                  IntrusiveRefCntPtr<ResourceTracker> RT);
 
             void rt_reoptimize(SendErrorFn SendResult, ReOptMaterializationUnitID MUID,
                                uint32_t CurVersion);

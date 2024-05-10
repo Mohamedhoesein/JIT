@@ -116,7 +116,7 @@ llvm::orc::JIT::JIT(std::unique_ptr<llvm::orc::ExecutionSession> ES,
     )));
     cantFail(this->ReOptLayer->reigsterRuntimeFunctions(*this->MainJD));
     this->ReOptLayer->setReoptimizeFunc(
-            [&](llvm::orc::ReOptimizeLayer &parent, llvm::orc::ReOptMaterializationUnitID MUID,
+            [&](llvm::orc::ReOptimizeLayer &parent, llvm::orc::ReOptimizeLayer::ReOptMaterializationUnitID MUID,
                 unsigned CurrentVersion, llvm::orc::ResourceTrackerSP OldResourceTracker,
                 llvm::orc::ThreadSafeModule &TSM) {
                     return this->ReOptimizationTransform(TSM).takeError();
@@ -176,7 +176,7 @@ llvm::Expected<std::unique_ptr<llvm::orc::BaseJIT>> llvm::orc::JIT::create(llvm:
     if (!ol)
         return ol.takeError();
 
-    auto jlrsm = JITLinkRedirectableSymbolManager::Create(*es, **ol, es->createBareJITDylib("main"));
+    auto jlrsm = JITLinkRedirectableSymbolManager::Create(**ol, es->createBareJITDylib("main"));
 
     if (!jlrsm)
         return jlrsm.takeError();

@@ -26,15 +26,12 @@ def main(args: typing.Any):
         temp_compile_file = llvm_common.add_jit_time_compile_file(directory)
         files.remove_files([temp_compile_file])
         print("started " + directory)
-        compile_file = llvm_common.add_compile_file(directory)
         run_file = files.add_run_file(directory)
-        if not os.path.isfile(compile_file) or not os.path.isfile(run_file):
+        if not os.path.isfile(run_file):
             print("finished " + directory)
             continue
         os.chdir(os.path.join(os.path.dirname(base_directory), "../"))
-        compile_module = os.path.relpath(compile_file).replace("/", ".")[:-3]
         run_module = os.path.relpath(run_file).replace("/", ".")[:-3]
-        subprocess.run(["python3", "-m", compile_module] + llvm_common.args_to_compile_array(args), check=True)
         subprocess.run(["python3", "-m", run_module] + common.args_to_run_array(args), check=True)
         files.simple_copy_data_files(directory, base_directory, component)
 

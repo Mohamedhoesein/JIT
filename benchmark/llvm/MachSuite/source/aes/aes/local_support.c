@@ -1,5 +1,4 @@
 #include "aes.h"
-#include "support.h"
 #include <string.h>
 
 int INPUT_SIZE = sizeof(struct bench_args_t);

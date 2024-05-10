@@ -52,3 +52,8 @@ When a new back-end is added, make sure there is a valid mapping available for a
 performance data given by the back-end, alongside a set of arguments which should be tested. For the former look at the
 `back_end_parsing_map` function in `benchmark/common.py`, for the latter look at the `back_end_args_map` function in the
 same file.
+## List
+* [CHStone](https://github.com/A-T-Kristensen/patmos_HLS)
+* [MachSuite](https://github.com/breagen/MachSuite/)
+* [Tacle-Bench](https://github.com/tacle/tacle-bench)
+* [Polybench](https://web.cs.ucla.edu/~pouchet/software/polybench/)

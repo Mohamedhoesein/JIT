@@ -114,11 +114,17 @@ Error ReOptimizeLayer::reoptimizeIfCallFrequent(ReOptimizeLayer &Parent,
         return Error::success();
     });
 }
-
 Expected<SymbolMap>
 ReOptimizeLayer::emitMUImplSymbols(ReOptMaterializationUnitState &MUState,
                                    uint32_t Version, JITDylib &JD,
                                    ThreadSafeModule TSM) {
+    return emitMUImplSymbols(MUState, Version, JD, std::move(TSM), JD.createResourceTracker());
+}
+Expected<SymbolMap>
+ReOptimizeLayer::emitMUImplSymbols(ReOptMaterializationUnitState &MUState,
+                                   uint32_t Version, JITDylib &JD,
+                                   ThreadSafeModule TSM,
+                                   IntrusiveRefCntPtr<ResourceTracker> RT) {
     DenseMap<SymbolStringPtr, SymbolStringPtr> RenamedMap;
     cantFail(TSM.withModuleDo([&](Module &M) -> Error {
         MangleAndInterner Mangle(ES, M.getDataLayout());
@@ -132,7 +138,7 @@ ReOptimizeLayer::emitMUImplSymbols(ReOptMaterializationUnitState &MUState,
         return Error::success();
     }));
 
-    auto RT = JD.createResourceTracker();
+    //auto RT = JD.createResourceTracker();
     if (auto Err =
             JD.define(std::make_unique<BasicIRLayerMaterializationUnit>(
                               BaseLayer, *getManglingOptions(), std::move(TSM)),
@@ -178,7 +184,7 @@ void ReOptimizeLayer::rt_reoptimize(SendErrorFn SendResult,
     }
 
     auto SymbolDests =
-            emitMUImplSymbols(MUState, CurVersion + 1, JD, std::move(TSM));
+            emitMUImplSymbols(MUState, CurVersion + 1, JD, std::move(TSM), OldRT);
     if (!SymbolDests) {
         ES.reportError(SymbolDests.takeError());
         MUState.reoptimizeFailed();

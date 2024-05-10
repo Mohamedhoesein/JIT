@@ -1,39 +1,5 @@
 #include <stdlib.h>
 #include <inttypes.h>
-#include <stdio.h>
-#include <stdarg.h>
-#include <string.h>
-#include <unistd.h>
-#include <assert.h>
-#include <errno.h>
-#include <sys/types.h>
-#include <fcntl.h>
-#include <sys/stat.h>
-
-#ifndef SUPPORT_H
-#define SUPPORT_H
-
-// In general, fd_printf is used for individual values.
-#define SUFFICIENT_SPRINTF_SPACE 256
-
-// It'd be nice if dprintf was c99. But it ain't.
-static int fd_printf(int fd, const char *format, ...) {
-    va_list args;
-    int buffered, written, status;
-    char buffer[SUFFICIENT_SPRINTF_SPACE];
-    va_start(args, format);
-    buffered = vsnprintf(buffer, SUFFICIENT_SPRINTF_SPACE, format, args);
-    va_end(args);
-    assert(buffered<SUFFICIENT_SPRINTF_SPACE && "Overran fd_printf buffer---output possibly corrupt");
-    written = 0;
-    while(written<buffered) {
-        status = write(fd, &buffer[written], buffered-written);
-        assert(status>=0 && "Write failed");
-        written += status;
-    }
-    assert(written==buffered && "Wrote more data than given");
-    return written;
-}
 
 ///// File and section functions
 char *readfile(int fd);
@@ -167,5 +133,3 @@ static inline void prng_srand(uint64_t seed, struct prng_rand_t *state) {
 // PRNG_RAND_MAX is exported
 
 #endif
-
-#endif /* SUPPORT_H */

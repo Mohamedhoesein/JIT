@@ -104,7 +104,7 @@ int minver_minver( int side, double eps )
 
   int work[ 500 ], i, j, k, iw;
   int r = 0;
-  double w, wmax, pivot, api, w1;
+  double w = 0, wmax, pivot, api, w1;
 
   if ( side < 2 || side > 500 || eps <= 0.0 )
     return ( 999 );
@@ -163,11 +163,6 @@ int minver_minver( int side, double eps )
   }
   _Pragma( "loopbound min 3 max 3" )
   for ( i = 0; i < side; ) {
-    /*  The following redundant statement is inserted due to limitations of
-        WCC's flow fact manager. It is required in order to have the flow
-        fact pragma below uniquely attached to the while(1) loop.
-    */
-    i = i;
     _Pragma( "loopbound min 1 max 3" )
     while ( 1 ) {
       k = work[ i ];
@@ -195,7 +190,7 @@ int minver_minver( int side, double eps )
 
 void minver_init()
 {
-  int i,j;
+  int i, j;
   volatile int x = 0;
 
   _Pragma( "loopbound min 3 max 3" )
@@ -209,7 +204,7 @@ void minver_init()
 
 int minver_return()
 {
-  int i,j;
+  int i, j;
   double check_sum = 0;
 
   _Pragma( "loopbound min 3 max 3" )
@@ -219,7 +214,7 @@ int minver_return()
       check_sum += minver_a_i[ i ][ j ];
   }
   /* Avoid double comparison */
-  return (int)(check_sum*100) != 48;
+  return ( int )( check_sum * 100 ) != 48;
 }
 
 

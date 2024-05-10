@@ -23,13 +23,11 @@
 /*
   Forward declaration of functions
 */
-
 int fac_fac( int n );
 void fac_init();
 int fac_return();
 void fac_main();
 int main( void );
-
 /*
   Declaration of global variables
 */
