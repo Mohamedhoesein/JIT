@@ -198,7 +198,10 @@ llvm::Error llvm::orc::JIT::addModule(llvm::orc::ThreadSafeModule ThreadSafeModu
             ThreadSafeModule.withModuleDo([&](llvm::Module &module) {
                 // Functions need to be externally linked so that it shows up in the symbol table and reoptimize can make use of it.
                 // We rename the function to avoid conflicts with other internal functions that could have the same name.
+                std::vector<StringRef> functions;
                 for (auto &function : module) {
+                    if (function.hasName() && function.getName().contains("__def__"))
+                        functions.push_back(function.getName().split(".").first);
                     if (!function.isDeclaration() && function.hasInternalLinkage()) {
                         int index = 0;
                         if (Internals.contains(function.getName())) {
@@ -219,6 +222,29 @@ llvm::Error llvm::orc::JIT::addModule(llvm::orc::ThreadSafeModule ThreadSafeModu
                         call->insertInto(&function.getEntryBlock(), function.getEntryBlock().begin());
                     }
 #endif
+                }
+                for (auto &global : module.global_values()) {
+                    if (global.hasName()) {
+                        StringRef value;
+                        if (global.getName().contains("__def__"))
+                            value = global.getName().split("__def__").first;
+                        else
+                            value = global.getName();
+                        if (std::find(functions.begin(), functions.end(), value) != functions.end())
+                            continue;
+                    }
+
+                    if (!global.isDeclaration() && global.hasInternalLinkage()) {
+                        int index = 0;
+                        if (Internals.contains(global.getName())) {
+                            index = Internals.at(global.getName()) + 1;
+                            Internals.insert_or_assign(global.getName(), index);
+                        } else {
+                            Internals.insert(std::pair(global.getName(), index));
+                        }
+                        global.setName(global.getName() + Twine(index));
+                        global.setLinkage(GlobalValue::ExternalLinkage);
+                    }
                 }
                 return applyDataLayout(module);
             }))

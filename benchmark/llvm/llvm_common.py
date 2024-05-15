@@ -177,7 +177,9 @@ def read_compile_data(path: str) -> typing.Callable[[str, bool, int], str]:
         else:
             full_path = add_reference_time_compile_file(path)
         with open(full_path, "r+") as f:
-            for line in f.readlines():
+            lines = f.readlines()
+            lines.reverse()
+            for line in lines:
                 components = line.split(",", 1)
                 if name.startswith(components[0]):
                     return "PreCompile: " + components[1].split(",")[i].strip()
