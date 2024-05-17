@@ -246,7 +246,7 @@ def run(
                         print(f"started run {i + 1}")
                         prestep(path, source_directory, True, i)
                         sources = component_data.jit_files(full_jit_directory)
-                        extra_data = extra(current_prefix, True, i)
+                        extra_data = extra(source_directory, True, i)
                         run_command(
                             current_prefix + " " + b.name,
                             benchmark_jit,

@@ -99,8 +99,9 @@ def compile(
                 capture_output=True,
                 shell=True
             )
+            while len(os.listdir(full_reference_target)) == 0:
+                pass
             time = common.get_time(result.stderr)
-            time = time if time is not None else -1
             with open(add_reference_time_compile_file(benchmark_root), "a+") as f:
                 if i == 0:
                     f.write(benchmark)
