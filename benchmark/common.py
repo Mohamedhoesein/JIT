@@ -56,7 +56,7 @@ def get_time(err: bytes) -> float:
                 time = time.strip()
                 first_split = time.split("m")
                 minutes = locale.atof(first_split[0])
-                return minutes * 60 + locale.atof(first_split[1].removesuffix("s")) * 10000
+                return minutes * 60 + locale.atof(first_split[1].removesuffix("s")) * 1000
     return -1
 
 
@@ -226,12 +226,12 @@ def run(
             reference = component_data.reference_command(full_reference_directory)
             reference_args = arguments(full_reference_directory)
             for j in range(get_recompilations()):
-                print(f"started compilation {j + 1}")
+                print(f"started run {j + 1}")
+                prestep(path, source_directory, False, j)
                 for i in range(get_repeats()):
-                    print(f"started run {i + 1}")
-                    prestep(path, source_directory, False, i)
+                    print(f"started iteration {i + 1}")
                     current_prefix = (prefix if prefix.endswith("/") else prefix + "/") + source_directory
-                    extra_data = extra(source_directory, False, i)
+                    extra_data = extra(source_directory, False, j)
                     run_command(
                         current_prefix,
                         benchmark_reference,
@@ -243,8 +243,8 @@ def run(
                         extra_data,
                         ""
                     )
-                    print(f"finished run {i + 1}")
-                print(f"finished compilation {j + 1}")
+                    print(f"finished iteration {i + 1}")
+                print(f"finished run {j + 1}")
             print(f"finished running {source_directory}")
     if component_data.for_jit():
         files.recreate_file([benchmark_jit, other_jit])
@@ -258,12 +258,12 @@ def run(
                     print(f"started running back-end args {b.name}")
                     current_prefix = (prefix if prefix.endswith("/") else prefix + "/") + source_directory
                     for j in range(get_recompilations()):
-                        print(f"started compilation {j + 1}")
+                        print(f"started run {j + 1}")
+                        prestep(path, source_directory, True, j)
                         for i in range(get_repeats()):
-                            print(f"started run {i + 1}")
-                            prestep(path, source_directory, True, i)
+                            print(f"started iteration {i + 1}")
                             jit_files = component_data.jit_files(full_jit_directory)
-                            extra_data = extra(source_directory, True, i)
+                            extra_data = extra(source_directory, True, j)
                             run_command(
                                 current_prefix + " " + b.name,
                                 benchmark_jit,
@@ -277,8 +277,8 @@ def run(
                                 f"\"front-end {f.name}:{f.args}\",\"back-end {b.name}:{b.args}\",\"{extra_data}\"",
                                 f"\"front-end {f.name}:{f.args}\",\"back-end {b.name}:{b.args}\""
                             )
-                            print(f"finished run {i + 1}")
-                        print(f"finished compilation {j + 1}")
+                            print(f"finished iteration {i + 1}")
+                        print(f"finished run {j + 1}")
                     print(f"finished running back-end args {b.name}")
                 print(f"finished running front-end args {f.name}")
             print(f"finished running {source_directory}")
