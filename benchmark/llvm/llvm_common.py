@@ -73,9 +73,10 @@ def compile(
                 shutil.rmtree(full_jit_target)
             os.makedirs(full_jit_target)
             os.chdir(full_jit_target)
-            command = ["time", compiler(), "-S", "-emit-llvm", "-O", "-Xclang", "-disable-llvm-passes"] + list(map(lambda x: "-I" + x, includes)) + source_files + include_sources
+            full_command = " ".join(["time", compiler(), "-S", "-emit-llvm", "-O", "-Xclang", "-disable-llvm-passes"] + list(map(lambda x: "-I" + x, includes)) + source_files + include_sources)
+            full_command = f"/bin/bash -c \"{full_command}\""
             result = subprocess.run(
-                [" ".join(command)],
+                [full_command],
                 capture_output=True,
                 shell=True
             )
@@ -86,16 +87,17 @@ def compile(
                 if i == 0:
                     f.write(benchmark)
                 f.write(f",{time}")
-                if i == 4:
+                if i == common.get_repeats() - 1:
                     f.write("\n")
         else:
             if os.path.exists(full_reference_target):
                 shutil.rmtree(full_reference_target)
             os.makedirs(full_reference_target)
             os.chdir(full_reference_target)
-            command = ["time", compiler(), "-O3", "-lm"] + list(map(lambda x: "-I" + x, includes)) + source_files + include_sources
+            full_command = " ".join(["time", compiler(), "-O3", "-lm"] + list(map(lambda x: "-I" + x, includes)) + source_files + include_sources)
+            full_command = f"/bin/bash -c \"{full_command}\""
             result = subprocess.run(
-                [" ".join(command)],
+                [full_command],
                 capture_output=True,
                 shell=True
             )
@@ -106,7 +108,7 @@ def compile(
                 if i == 0:
                     f.write(benchmark)
                 f.write(f",{time}")
-                if i == 4:
+                if i == common.get_repeats() - 1:
                     f.write("\n")
 
         additional_steps(os.path.join(source_directory, benchmark), full_reference_target, full_jit_target, classes.Component.JIT if jit else classes.Component.REFERENCE)

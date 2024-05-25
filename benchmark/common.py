@@ -6,6 +6,7 @@ import os
 import subprocess
 import typing
 import argparse
+import locale
 
 from . import default
 from . import files
@@ -17,7 +18,7 @@ def get_repeats():
     Get how many times each benchmark should be run.
     :return: How many times each benchmark should be run.
     """
-    return 5
+    return 500
 
 
 def add_quote(string: str) -> str:
@@ -38,6 +39,7 @@ def get_time(err: bytes) -> float:
     :return: The wall clock time in milliseconds from the time command.
     """
     lines = err.decode().splitlines()
+    locale.setlocale(locale.LC_ALL, "")
     for line in lines:
         parts = line.split(" ")
         for part in parts:
@@ -45,8 +47,8 @@ def get_time(err: bytes) -> float:
                 time = part.removeprefix("real")
                 time = time.strip()
                 first_split = time.split("m")
-                minutes = float(first_split[0])
-                return minutes * 60 + float(first_split[1].removesuffix("s")) * 10000
+                minutes = locale.atof(first_split[0])
+                return minutes * 60 + locale.atof(first_split[1].removesuffix("s")) * 10000
     return -1
 
 
@@ -74,8 +76,10 @@ def run_command(
     :param extra_other: Any extra information to place in the csv file for the other data.
     :param extra_base: Any extra information to place in the csv file for the time data.
     """
+    full_command = " ".join(["time"] + command)
+    full_command = f"/bin/bash -c \"{full_command}\""
     process = subprocess.run(
-        [" ".join(["time"] + command)],
+        [full_command],
         capture_output=True,
         shell=True
     )
@@ -223,7 +227,7 @@ def run(
                     benchmark_reference,
                     reference + reference_args,
                     i == 0,
-                    i == 4,
+                    i == (get_repeats() - 1),
                     component_data.reference_data_extraction,
                     other_reference,
                     extra_data,
@@ -245,16 +249,16 @@ def run(
                     for i in range(get_repeats()):
                         print(f"started run {i + 1}")
                         prestep(path, source_directory, True, i)
-                        sources = component_data.jit_files(full_jit_directory)
+                        jit_files = component_data.jit_files(full_jit_directory)
                         extra_data = extra(source_directory, True, i)
                         run_command(
                             current_prefix + " " + b.name,
                             benchmark_jit,
-                            [component_data.jit, "-i", "\"" + ",".join(sources) + "\"", "-a", "\"" + " ".join(jit_args) + "\""] +
+                            [component_data.jit, "-i", "\"" + ",".join(jit_files) + "\"", "-a", "\"" + " ".join(jit_args) + "\""] +
                             (["-b", f"\"{b.args}\""] if b.args != "" else []) +
                             (["-r", f"\"{b.args}\""] if f.args != "" else []),
                             i == 0,
-                            i == 4,
+                            i == (get_repeats() - 1),
                             jit_other_data_extraction(component_data.front_end_extraction, component_data.back_end_extraction),
                             other_jit,
                             f"\"front-end {f.name}:{f.args}\",\"back-end {b.name}:{b.args}\",\"{extra_data}\"",

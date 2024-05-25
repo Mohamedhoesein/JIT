@@ -133,7 +133,7 @@ class ComponentData:
             reference_data_extraction: typing.Callable[[str, subprocess.CompletedProcess[bytes]], typing.List[str]],
             jit: str,
             reference_command: typing.Callable[[str], typing.List[str]],
-            jit_files: typing.Callable[[str], typing.List[str]],
+            jit_files: typing.Callable[[str], typing.List[str]]
     ):
         """
         The constructor for the data.
@@ -145,7 +145,7 @@ class ComponentData:
         :param reference_data_extraction: A callback for data extraction from the reference implementation.
         :param jit: The full path to the JIT.
         :param reference_command: A callback to get the command for the reference implementation.
-        :param jit_files: A callback to get
+        :param jit_files: A callback to get files for the JIT.
         """
         self.component = component
         self.front_end_args = front_end_args
