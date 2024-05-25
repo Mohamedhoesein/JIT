@@ -18,7 +18,7 @@ def get_repeats():
     Get how many times each benchmark should be run within a compilation.
     :return: How many times each benchmark should be run within a compilation.
     """
-    return 50
+    return 100
 
 
 def get_recompilations():
