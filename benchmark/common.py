@@ -15,10 +15,18 @@ from . import classes
 
 def get_repeats():
     """
-    Get how many times each benchmark should be run.
-    :return: How many times each benchmark should be run.
+    Get how many times each benchmark should be run within a compilation.
+    :return: How many times each benchmark should be run within a compilation.
     """
-    return 500
+    return 50
+
+
+def get_recompilations():
+    """
+    Get how many times each benchmark should be compiled.
+    :return: How many times each benchmark should be compiled.
+    """
+    return 50
 
 
 def add_quote(string: str) -> str:
@@ -77,7 +85,7 @@ def run_command(
     :param extra_base: Any extra information to place in the csv file for the time data.
     """
     full_command = " ".join(["time"] + command)
-    full_command = f"/bin/bash -c \"{full_command}\""
+    full_command = f"/bin/bash -c '{full_command}'"
     process = subprocess.run(
         [full_command],
         capture_output=True,
@@ -217,23 +225,26 @@ def run(
             full_reference_directory = os.path.join(files.get_reference_directory(path), source_directory.replace("/", "_"))
             reference = component_data.reference_command(full_reference_directory)
             reference_args = arguments(full_reference_directory)
-            for i in range(get_repeats()):
-                print(f"started run {i + 1}")
-                prestep(path, source_directory, False, i)
-                current_prefix = (prefix if prefix.endswith("/") else prefix + "/") + source_directory
-                extra_data = extra(source_directory, False, i)
-                run_command(
-                    current_prefix,
-                    benchmark_reference,
-                    reference + reference_args,
-                    i == 0,
-                    i == (get_repeats() - 1),
-                    component_data.reference_data_extraction,
-                    other_reference,
-                    extra_data,
-                    ""
-                )
-                print(f"finished run {i + 1}")
+            for j in range(get_recompilations()):
+                print(f"started compilation {j + 1}")
+                for i in range(get_repeats()):
+                    print(f"started run {i + 1}")
+                    prestep(path, source_directory, False, i)
+                    current_prefix = (prefix if prefix.endswith("/") else prefix + "/") + source_directory
+                    extra_data = extra(source_directory, False, i)
+                    run_command(
+                        current_prefix,
+                        benchmark_reference,
+                        reference + reference_args,
+                        i == 0,
+                        i == (get_repeats() - 1),
+                        component_data.reference_data_extraction,
+                        other_reference,
+                        extra_data,
+                        ""
+                    )
+                    print(f"finished run {i + 1}")
+                print(f"finished compilation {j + 1}")
             print(f"finished running {source_directory}")
     if component_data.for_jit():
         files.recreate_file([benchmark_jit, other_jit])
@@ -246,25 +257,28 @@ def run(
                 for b in component_data.back_end_args:
                     print(f"started running back-end args {b.name}")
                     current_prefix = (prefix if prefix.endswith("/") else prefix + "/") + source_directory
-                    for i in range(get_repeats()):
-                        print(f"started run {i + 1}")
-                        prestep(path, source_directory, True, i)
-                        jit_files = component_data.jit_files(full_jit_directory)
-                        extra_data = extra(source_directory, True, i)
-                        run_command(
-                            current_prefix + " " + b.name,
-                            benchmark_jit,
-                            [component_data.jit, "-i", "\"" + ",".join(jit_files) + "\"", "-a", "\"" + " ".join(jit_args) + "\""] +
-                            (["-b", f"\"{b.args}\""] if b.args != "" else []) +
-                            (["-r", f"\"{b.args}\""] if f.args != "" else []),
-                            i == 0,
-                            i == (get_repeats() - 1),
-                            jit_other_data_extraction(component_data.front_end_extraction, component_data.back_end_extraction),
-                            other_jit,
-                            f"\"front-end {f.name}:{f.args}\",\"back-end {b.name}:{b.args}\",\"{extra_data}\"",
-                            f"\"front-end {f.name}:{f.args}\",\"back-end {b.name}:{b.args}\""
-                        )
-                        print(f"finished run {i + 1}")
+                    for j in range(get_recompilations()):
+                        print(f"started compilation {j + 1}")
+                        for i in range(get_repeats()):
+                            print(f"started run {i + 1}")
+                            prestep(path, source_directory, True, i)
+                            jit_files = component_data.jit_files(full_jit_directory)
+                            extra_data = extra(source_directory, True, i)
+                            run_command(
+                                current_prefix + " " + b.name,
+                                benchmark_jit,
+                                [component_data.jit, "-i", "\"" + ",".join(jit_files) + "\"", "-a", "\"" + " ".join(jit_args) + "\""] +
+                                (["-b", f"\"{b.args}\""] if b.args != "" else []) +
+                                (["-r", f"\"{b.args}\""] if f.args != "" else []),
+                                i == 0,
+                                i == (get_repeats() - 1),
+                                jit_other_data_extraction(component_data.front_end_extraction, component_data.back_end_extraction),
+                                other_jit,
+                                f"\"front-end {f.name}:{f.args}\",\"back-end {b.name}:{b.args}\",\"{extra_data}\"",
+                                f"\"front-end {f.name}:{f.args}\",\"back-end {b.name}:{b.args}\""
+                            )
+                            print(f"finished run {i + 1}")
+                        print(f"finished compilation {j + 1}")
                     print(f"finished running back-end args {b.name}")
                 print(f"finished running front-end args {f.name}")
             print(f"finished running {source_directory}")
