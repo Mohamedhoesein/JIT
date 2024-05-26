@@ -62,7 +62,6 @@
 /*                                                                       */
 /*                                                                       */
 /*************************************************************************/
-#include <stdio.h>
 
 int encode (int, int);
 void decode (int);
@@ -877,6 +876,5 @@ main ()
 	      main_result += 1;
 	    }
 	}
-      printf ("%d\n", main_result);
       return main_result;
     }

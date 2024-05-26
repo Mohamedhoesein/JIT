@@ -201,7 +201,8 @@ def run(
         arguments: typing.Callable[[str], typing.List[str]],
         back_end_extraction: typing.Callable[[str, subprocess.CompletedProcess[bytes]], typing.List[str]],
         component: classes.Component,
-        back_end: str
+        back_end: str,
+        single
 ) -> None:
     """
     Run the benchmark in a specific folder.
@@ -216,6 +217,7 @@ def run(
     :param back_end_extraction: A callback to extract data for the back-end.
     :param component: If it is for the JIT, reference implementation, or both.
     :param back_end: The name of the back-end being used.
+    :param single: If a single iteration should happen within a compilation.
     """
     temp_jit = add_jit_time_compile_file(path)
     temp_reference = add_reference_time_compile_file(path)
@@ -237,7 +239,8 @@ def run(
             get_reference_file_name,
             get_llvm_files
         ),
-        read_compile_data(path)
+        read_compile_data(path),
+        single
     )
 
 

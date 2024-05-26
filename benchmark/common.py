@@ -18,15 +18,23 @@ def get_repeats():
     Get how many times each benchmark should be run within a compilation.
     :return: How many times each benchmark should be run within a compilation.
     """
-    return 100
+    return 30
 
 
-def get_recompilations():
+def get_recompilations_multiple():
     """
-    Get how many times each benchmark should be compiled.
-    :return: How many times each benchmark should be compiled.
+    Get how many times each benchmark should be compiled when doing a multiple runs within a compilation.
+    :return: How many times each benchmark should be compiled when doing a multiple runs within a compilation.
     """
-    return 50
+    return 30
+
+
+def get_recompilations_single():
+    """
+    Get how many times each benchmark should be compiled when doing a multiple runs within a compilation.
+    :return: How many times each benchmark should be compiled when doing a multiple runs within a compilation.
+    """
+    return 900
 
 
 def add_quote(string: str) -> str:
@@ -201,7 +209,8 @@ def run(
         sources: typing.List[str],
         arguments: typing.Callable[[str], typing.List[str]],
         component_data: classes.ComponentData,
-        extra: typing.Callable[[str, bool, int], str]
+        extra: typing.Callable[[str, bool, int], str],
+        single: bool
 ) -> None:
     """
     Run the benchmarks in the JIT, reference implementation, or both.
@@ -210,14 +219,18 @@ def run(
     :param prestep: A step to execute before the benchmark is run.
     :param sources: A list of benchmarks to run.
     :param arguments: A callback to get additional arguments for the benchmark.
+    :param component_data: The data for the reference implementation and JIT compiler
     :param extra: A callback to get any additional data from an external source.
-    :param component_data:
+    :param single: If a single iteration should happen within a compilation.
     """
     benchmark_reference = files.get_time_data_reference_file(path)
     other_reference = files.get_other_data_reference_file(path)
     benchmark_jit = files.get_time_data_jit_file(path)
     other_jit = files.get_other_data_jit_file(path)
     files.remove_files([benchmark_reference, other_reference, benchmark_jit, other_jit])
+    recompilations = get_recompilations_single() if single else get_recompilations_multiple()
+    iterations = 1 if single else get_repeats()
+    end = (get_recompilations_single() if single else get_repeats()) - 1
     if component_data.for_reference():
         files.recreate_file([benchmark_reference, other_reference])
         for source_directory in sorted(sources):
@@ -225,10 +238,10 @@ def run(
             full_reference_directory = os.path.join(files.get_reference_directory(path), source_directory.replace("/", "_"))
             reference = component_data.reference_command(full_reference_directory)
             reference_args = arguments(full_reference_directory)
-            for j in range(get_recompilations()):
+            for j in range(recompilations):
                 print(f"started run {j + 1}")
                 prestep(path, source_directory, False, j)
-                for i in range(get_repeats()):
+                for i in range(iterations):
                     print(f"started iteration {i + 1}")
                     current_prefix = (prefix if prefix.endswith("/") else prefix + "/") + source_directory
                     extra_data = extra(source_directory, False, j)
@@ -237,7 +250,7 @@ def run(
                         benchmark_reference,
                         reference + reference_args,
                         i == 0,
-                        i == (get_repeats() - 1),
+                        i == end,
                         component_data.reference_data_extraction,
                         other_reference,
                         extra_data,
@@ -257,10 +270,10 @@ def run(
                 for b in component_data.back_end_args:
                     print(f"started running back-end args {b.name}")
                     current_prefix = (prefix if prefix.endswith("/") else prefix + "/") + source_directory
-                    for j in range(get_recompilations()):
+                    for j in range(recompilations):
                         print(f"started run {j + 1}")
                         prestep(path, source_directory, True, j)
-                        for i in range(get_repeats()):
+                        for i in range(iterations):
                             print(f"started iteration {i + 1}")
                             jit_files = component_data.jit_files(full_jit_directory)
                             extra_data = extra(source_directory, True, j)
@@ -271,7 +284,7 @@ def run(
                                 (["-b", f"\"{b.args}\""] if b.args != "" else []) +
                                 (["-r", f"\"{b.args}\""] if f.args != "" else []),
                                 i == 0,
-                                i == (get_repeats() - 1),
+                                i == end,
                                 jit_other_data_extraction(component_data.front_end_extraction, component_data.back_end_extraction),
                                 other_jit,
                                 f"\"front-end {f.name}:{f.args}\",\"back-end {b.name}:{b.args}\",\"{extra_data}\"",
@@ -304,14 +317,15 @@ def parse_jit_args() -> typing.Any:
         prog="benchmark",
         description="Benchmark the jit and run some reference implementation."
     )
-    parser.add_argument('-j', help="The jit to use.")
-    parser.add_argument('-b', nargs=1,
+    parser.add_argument("-j", help="The jit to use.")
+    parser.add_argument("-b",
                         help="The back-end that is used in the jit, this determines how to parse the additional information from the jit.")
-    parser.add_argument('-e', action="store_true",
+    parser.add_argument("-e", action="store_true",
                         help="If some external reference implementation will be ran for their performance.")
+    parser.add_argument("-s", action="store_true",
+                        help="If a single run should be done per compilation")
     args = parser.parse_args()
-    if args.b is not None:
-        args.b = args.b[0]
+    print(args.b)
     if args.j is not None and not valid_back_end(args.b):
         print("Invalid back-end given.")
         exit(-1)
@@ -337,9 +351,9 @@ def full_parse_jit_args() -> typing.Any:
                         help="The back-end that is used in the jit, this determines how to parse the additional information from the jit.")
     parser.add_argument('-e', action="store_true",
                         help="If some external reference implementation will be ran for their performance.")
+    parser.add_argument("-s", action="store_true",
+                        help="If a single run should be done per compilation")
     args = parser.parse_args()
-    if args.b is not None:
-        args.b = args.b[0]
     if not valid_front_end(args.f):
         print("Invalid frontend given.")
         exit(-1)
@@ -360,7 +374,8 @@ def args_to_run_array(args: typing.Any) -> typing.List[str]:
     """
     return ((["-j", args.j] if args.j is not None else []) +
             (["-b", args.b] if args.b != "" and args.b is not None else []) +
-            (["-e"] if args.e else []))
+            (["-e"] if args.e else []) +
+            (["-s"] if args.s else []))
 
 
 def args_to_component(args: typing.Any) -> classes.Component:

@@ -39,7 +39,8 @@ def main(args: typing.Any):
         default.default_arguments,
         common.back_end_parsing(args.b),
         common.args_to_component(args),
-        args.b
+        args.b,
+        args.s
     )
 
 
