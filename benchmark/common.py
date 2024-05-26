@@ -205,7 +205,7 @@ def jit_other_data_extraction(
 def run(
         path: str,
         prefix: str,
-        prestep: typing.Callable[[str, str, bool, int], None],
+        prestep: typing.Callable[[str, str, bool, int, bool], None],
         sources: typing.List[str],
         arguments: typing.Callable[[str], typing.List[str]],
         component_data: classes.ComponentData,
@@ -240,7 +240,7 @@ def run(
             reference_args = arguments(full_reference_directory)
             for j in range(recompilations):
                 print(f"started run {j + 1}")
-                prestep(path, source_directory, False, j)
+                prestep(path, source_directory, False, j, j == (recompilations - 1))
                 for i in range(iterations):
                     print(f"started iteration {i + 1}")
                     current_prefix = (prefix if prefix.endswith("/") else prefix + "/") + source_directory
@@ -272,7 +272,7 @@ def run(
                     current_prefix = (prefix if prefix.endswith("/") else prefix + "/") + source_directory
                     for j in range(recompilations):
                         print(f"started run {j + 1}")
-                        prestep(path, source_directory, True, j)
+                        prestep(path, source_directory, True, j, j == (recompilations - 1))
                         for i in range(iterations):
                             print(f"started iteration {i + 1}")
                             jit_files = component_data.jit_files(full_jit_directory)

@@ -53,7 +53,7 @@ def compile(
     """
     include_sources = files.get_all_source_files(includes, filter_wrapper(filter_source_files))
 
-    def __temp__(benchmark_root: str, benchmark: str, jit: bool, i: int):
+    def __temp__(benchmark_root: str, benchmark: str, jit: bool, i: int, last: bool):
         """
         Compile a benchmark.
         :param benchmark_root: The root directory of the benchmark.
@@ -87,7 +87,7 @@ def compile(
                 if i == 0:
                     f.write(benchmark)
                 f.write(f",{time}")
-                if i == common.get_repeats() - 1:
+                if last:
                     f.write("\n")
         else:
             if os.path.exists(full_reference_target):
