@@ -347,7 +347,7 @@ def full_parse_jit_args() -> typing.Any:
     parser.add_argument('-j', help="The jit to use.")
     parser.add_argument('-f', required=True,
                         help="The frontend that is used in the jit, this determines which folder is taken.")
-    parser.add_argument('-b', nargs=1,
+    parser.add_argument('-b',
                         help="The back-end that is used in the jit, this determines how to parse the additional information from the jit.")
     parser.add_argument('-e', action="store_true",
                         help="If some external reference implementation will be ran for their performance.")
