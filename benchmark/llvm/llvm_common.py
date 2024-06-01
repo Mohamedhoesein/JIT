@@ -108,7 +108,7 @@ def compile(
                 if i == 0:
                     f.write(benchmark)
                 f.write(f",{time}")
-                if i == common.get_repeats() - 1:
+                if last:
                     f.write("\n")
 
         additional_steps(os.path.join(source_directory, benchmark), full_reference_target, full_jit_target, classes.Component.JIT if jit else classes.Component.REFERENCE)
