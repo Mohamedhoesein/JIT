@@ -13,7 +13,7 @@ public:
      */
     virtual ~BaseFrontEnd() = default;
     /**
-     * Create a front-end based on a compiler flag. When creating a new front-ned add it in an elifdef directive with a
+     * Create a front-end based on a compiler flag. When creating a new front-end add it in an elifdef directive with a
      * unique macro is required, also add the callback to request a module to the requestModule function. Add benchmarks
      * to the benchmark folder, it should be a top-level folder with a run.py script.
      * @param Arguments Arguments for the front-end.

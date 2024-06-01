@@ -34,7 +34,7 @@ def get_recompilations_single():
     Get how many times each benchmark should be compiled when doing a multiple runs within a compilation.
     :return: How many times each benchmark should be compiled when doing a multiple runs within a compilation.
     """
-    return 900
+    return 500
 
 
 def add_quote(string: str) -> str:
@@ -230,7 +230,6 @@ def run(
     files.remove_files([benchmark_reference, other_reference, benchmark_jit, other_jit])
     recompilations = get_recompilations_single() if single else get_recompilations_multiple()
     iterations = 1 if single else get_repeats()
-    end = (get_recompilations_single() if single else get_repeats()) - 1
     if component_data.for_reference():
         files.recreate_file([benchmark_reference, other_reference])
         for source_directory in sorted(sources):
@@ -249,8 +248,8 @@ def run(
                         current_prefix,
                         benchmark_reference,
                         reference + reference_args,
-                        i == 0,
-                        i == end,
+                        (j == 0) if single else (i == 0),
+                        (j == (recompilations - 1)) if single else (i == (iterations - 1)),
                         component_data.reference_data_extraction,
                         other_reference,
                         extra_data,
@@ -283,8 +282,8 @@ def run(
                                 [component_data.jit, "-i", "\"" + ",".join(jit_files) + "\"", "-a", "\"" + " ".join(jit_args) + "\""] +
                                 (["-b", f"\"{b.args}\""] if b.args != "" else []) +
                                 (["-r", f"\"{b.args}\""] if f.args != "" else []),
-                                i == 0,
-                                i == end,
+                                (j == 0) if single else (i == 0),
+                                (j == (recompilations - 1)) if single else (i == (iterations - 1)),
                                 jit_other_data_extraction(component_data.front_end_extraction, component_data.back_end_extraction),
                                 other_jit,
                                 f"\"front-end {f.name}:{f.args}\",\"back-end {b.name}:{b.args}\",\"{extra_data}\"",
