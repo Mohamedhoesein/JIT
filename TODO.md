@@ -28,4 +28,4 @@ JIT:
 - [x] Generalize the front-end so that an easy exchange of different front-ends is possible.
 - [x] For the arguments store the core combinations for each back-end in a file with a name associated with the back-end,
   you can have multiple for the same back-end. Which is used for the benchmarks.
-- [ ] Look at other papers to see if what I have now will work.
+- [x] Look at other papers to see if what I have now will work.

@@ -36,11 +36,17 @@ For the data that is given by the benchmarks for each front-end make sure that t
 of the front-end. There are two sets of files that can be given depending on if the results are for the JIT or reference
 implementation. These are named `other_data_{x}.csv`, and `time_data_{x}.csv`, where `{x}` can be either `jit` or
 `reference` depending on what version was run. `time_data_{x}.csv` will contain data that can be gathered from the `time`
-command and is thus easily  shared between each front-end and back-end combination, while `other_data_{x}.csv` will contain
+command and is thus easily shared between each front-end and back-end combination, while `other_data_{x}.csv` will contain
 any data specific to the front-end and back-end. Each row will contain the results of each individual run of each possible
 configuration. Where a configuration is a specific combination front-end, back-end, front-end arguments, and back-end
 arguments. The `run.py` script in the `benchmark` folder will copy the data files over to `benchmark/data/` with a name
-based on the current time, front-end and back-end.
+based on the current time, front-end and back-end. We allow for multiple combinations of the JIT compiler to be specified,
+but we assume that only a single version of the reference implementation is used.
+
+In the data folder we also have some results for the LLVM front-end. We have three zip files `O1.7z` contains the data
+of the benchmarks being run using Clang-17 with O1 as the optimisations, `O2.7z` contains the data of the benchmarks being
+run using Clang-17 with O2 as the optimisations, `O3.7z` contains the data of the benchmarks being run using Clang-17 with
+O3 as the optimisations, and `JIT.7z` contains the data of the different configurations of the simple JIT compiler.
 ## New Front-End
 When adding a benchmark for a new front-end, add a folder for it with a `run.py` script, alongside this there must be an
 `__init__.py` file so that it can be run as a module. The `run.py` script should accept the same arguments as specified

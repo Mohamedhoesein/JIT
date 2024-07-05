@@ -3,7 +3,6 @@ cmake-build-debug/
 
 benchmark/**/jit/
 benchmark/**/reference/
-benchmark/data/
 lib/**/
 
 a.out
